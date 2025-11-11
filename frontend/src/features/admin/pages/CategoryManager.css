@@ -1,0 +1,22 @@
+.category-manager-container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+}
+
+.category-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.category-input {
+  flex: 1;
+}
+
+.category-list {
+  background-color: #fafafa;
+  border-radius: 8px;
+  padding: 10px;
+}

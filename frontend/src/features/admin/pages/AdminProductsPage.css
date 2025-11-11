@@ -1,0 +1,90 @@
+/* Container styling */
+.admin-products-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+  background-color: #f5f6fa;
+  min-height: 100vh;
+}
+
+/* Card styling */
+.admin-products-card {
+  width: 100%;
+  max-width: 1100px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Title styling */
+.admin-title {
+  font-weight: 700 !important;
+  color: #1976d2;
+  margin-bottom: 10px !important;
+  text-align: center;
+}
+
+/* Divider between title and tabs */
+.divider {
+  margin: 20px 0;
+}
+
+/* Tabs styling */
+.tabs {
+  margin-bottom: 20px;
+  background-color: #f0f2f5;
+  border-radius: 8px;
+}
+
+.tab-item {
+  font-weight: 600 !important;
+  text-transform: none !important;
+  color: #333 !important;
+}
+
+.tab-item.Mui-selected {
+  color: #1976d2 !important;
+}
+
+/* Tab content area */
+.tab-content {
+  margin-top: 20px;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 10px;
+  border: 1px solid #e0e0e0;
+}
+
+/* Smooth fade-in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admin-products-card {
+    padding: 20px;
+  }
+
+  .admin-title {
+    font-size: 1.6rem !important;
+  }
+
+  .tabs {
+    flex-direction: column;
+  }
+
+  .tab-content {
+    padding: 10px;
+  }
+}

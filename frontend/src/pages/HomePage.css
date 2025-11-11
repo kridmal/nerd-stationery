@@ -1,0 +1,63 @@
+.home-container {
+  background-color: #f8f9fa;
+  color: #333;
+  text-align: center;
+}
+
+.hero-carousel img {
+  width: 100%;
+  height: 500px;
+  object-fit: cover;
+}
+
+.legend {
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.new-arrivals {
+  padding: 40px 20px;
+}
+
+.new-arrivals h2 {
+  font-size: 2rem;
+  margin-bottom: 25px;
+  color: #222;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  padding: 0 40px;
+}
+
+.social-footer {
+  margin-top: 60px;
+  padding: 30px 0;
+  background-color: #e9ecef;
+  border-top: 1px solid #ddd;
+}
+
+.social-footer h3 {
+  margin-bottom: 15px;
+  font-weight: 500;
+}
+
+.social-icons {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+}
+
+.social-icons img {
+  width: 40px;
+  height: 40px;
+  transition: transform 0.2s ease;
+}
+
+.social-icons img:hover {
+  transform: scale(1.15);
+}
