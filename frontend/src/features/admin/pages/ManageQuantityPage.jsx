@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Button, Modal, Form, Input, InputNumber, AutoComplete, message, Table, Tag } from "antd";
+import { Button, Modal, Form, Input, InputNumber, AutoComplete, message, Table, Tag, Space, Popconfirm } from "antd";
 import { getProducts, updateProductMinQuantity } from "../../../services/api";
 import { useNavigate } from "react-router-dom";
 
@@ -7,6 +7,8 @@ const ManageQuantityPage = () => {
   const [products, setProducts] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
@@ -95,6 +97,49 @@ const ManageQuantityPage = () => {
         );
       },
     },
+    {
+      title: "Action",
+      key: "action",
+      render: (_, record) => (
+        <Space size="small">
+          <Button
+            size="small"
+            onClick={() => {
+              setEditing(true);
+              setEditingProduct(record);
+              setOpen(true);
+              const code = record.itemCode || record.productCode || record.code || "";
+              form.setFieldsValue({
+                itemCode: code,
+                productName: record.name || "",
+                minQuantity: Number(record.minQuantity || 0),
+              });
+            }}
+          >
+            Edit
+          </Button>
+          <Popconfirm
+            title="Remove minimum quantity?"
+            okText="Yes"
+            cancelText="No"
+            onConfirm={async () => {
+              try {
+                setLoading(true);
+                await updateProductMinQuantity(record._id, 0);
+                await reloadProducts();
+                message.success("Minimum quantity removed");
+              } catch (e) {
+                message.error("Failed to remove minimum quantity");
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            <Button size="small" danger>Delete</Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ];
 
   return (
@@ -102,7 +147,15 @@ const ManageQuantityPage = () => {
       <h2>Manage Quantity Level</h2>
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
-        <Button type="primary" onClick={() => setOpen(true)}>
+        <Button
+          type="primary"
+          onClick={() => {
+            setEditing(false);
+            setEditingProduct(null);
+            form.resetFields();
+            setOpen(true);
+          }}
+        >
           Set Quantity Level
         </Button>
       </div>
@@ -125,15 +178,19 @@ const ManageQuantityPage = () => {
       >
         <Form form={form} layout="vertical" onFinish={handleSubmit} autoComplete="off">
           <Form.Item label="Item Code" name="itemCode" rules={[{ required: true, message: "Item code is required" }]}>
-            <AutoComplete
-              options={autoOptions}
-              onChange={handleItemCodeChange}
-              onSelect={handleItemCodeChange}
-              placeholder="Type item code"
-              filterOption={(inputValue, option) =>
-                (option?.value || "").toLowerCase().includes((inputValue || "").toLowerCase())
-              }
-            />
+            {editing ? (
+              <Input readOnly />
+            ) : (
+              <AutoComplete
+                options={autoOptions}
+                onChange={handleItemCodeChange}
+                onSelect={handleItemCodeChange}
+                placeholder="Type item code"
+                filterOption={(inputValue, option) =>
+                  (option?.value || "").toLowerCase().includes((inputValue || "").toLowerCase())
+                }
+              />
+            )}
           </Form.Item>
 
           <Form.Item label="Product Name" name="productName">

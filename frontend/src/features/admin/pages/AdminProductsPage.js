@@ -10,7 +10,9 @@ import {
   message,
   AutoComplete,
   Space,
+  Popconfirm,
 } from "antd";
+import { Radio, Tooltip } from "antd";
 import {
   getProducts,
   addProduct,
@@ -31,7 +33,11 @@ const AdminProductsPage = () => {
   const [searchValue, setSearchValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showVariation, setShowVariation] = useState(false);
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [basePrice, setBasePrice] = useState(null);
   const [loading, setLoading] = useState(false);
+  const discountTypeWatch = Form.useWatch("discountType", form);
+  const discountValueWatch = Form.useWatch("discountValue", form);
   const navigate = useNavigate();
 
   // ✅ Fetch products
@@ -98,10 +104,15 @@ const AdminProductsPage = () => {
         brand: np.variations?.brand || "",
         size: np.variations?.size || "",
         color: np.variations?.color || "",
+        discountType: editingProduct?.discountType ?? undefined,
+        discountValue: editingProduct?.discountValue ?? undefined,
       });
+      setShowDiscount(false);
+      setBasePrice(Number(np.unitPrice ?? 0));
     } else {
       form.setFieldsValue({ existingQuantity: 0, addNewQuantity: 0 });
       setSubcategories([]);
+      setBasePrice(Number(form.getFieldValue("unitPrice") ?? 0));
     }
   }, [isModalOpen, editingProduct, categories, form]);
 
@@ -113,11 +124,7 @@ const AdminProductsPage = () => {
         setSuggestions([]);
       } else {
         const lower = searchValue.toLowerCase();
-        const filtered = products.filter((p) => {
-          const name = p?.name?.toLowerCase() || "";
-          const category = p?.category?.toLowerCase() || "";
-          return name.includes(lower) || category.includes(lower);
-        });
+        const filtered = products.filter((p) => { const name = p?.name?.toLowerCase() || ""; const category = p?.category?.toLowerCase() || ""; const code = (p?.itemCode ?? p?.productCode ?? "").toString().toLowerCase(); return name.includes(lower) || category.includes(lower) || code.includes(lower); });
 
         setFilteredProducts(filtered);
         setSuggestions(
@@ -130,22 +137,51 @@ const AdminProductsPage = () => {
     return () => clearTimeout(timeout);
   }, [searchValue, products]);
 
+  // Live update Unit Price when discount changes
+  useEffect(() => {
+    if (!isModalOpen || !showDiscount) return;
+    const bp = Number(basePrice ?? form.getFieldValue("unitPrice") ?? 0);
+    const dv = Number(discountValueWatch ?? 0);
+    const dt = discountTypeWatch;
+    if (!dt || isNaN(bp)) return;
+    let next = bp;
+    if (dt === "percentage") {
+      const pct = Math.min(Math.max(dv, 0), 90);
+      next = Number((bp * (1 - pct / 100)).toFixed(2));
+    } else if (dt === "value") {
+      next = Number((isNaN(dv) ? 0 : dv).toFixed(2));
+    }
+    const current = Number(form.getFieldValue("unitPrice") ?? 0);
+    if (!Number.isNaN(next) && current !== next) {
+      form.setFieldsValue({ unitPrice: next });
+    }
+  }, [isModalOpen, showDiscount, discountTypeWatch, discountValueWatch, basePrice]);
+
   // ✅ Add or Update
   const handleAddOrUpdate = async (values) => {
     try {
       setLoading(true);
 
+      const enteredDiscount = Number(values.discountValue ?? 0);
       const base = {
         name: values.name,
         category: values.category,
         subcategory: values.subcategory,
         unitPrice: values.unitPrice,
+        shortDescription: values.shortDescription || "",
         variations: showVariation
           ? {
               brand: values.brand || "",
               size: values.size || "",
               color: values.color || "",
             }
+          : null,
+        discountType: showDiscount ? values.discountType ?? null : null,
+        // For percentage: store percent; For fixed value: store original/base price for tooltip
+        discountValue: showDiscount
+          ? (values.discountType === "percentage"
+              ? enteredDiscount
+              : Number(basePrice ?? values.unitPrice ?? 0))
           : null,
       };
 
@@ -203,7 +239,6 @@ const AdminProductsPage = () => {
   // ✅ Edit Product
   const handleEdit = (record) => {
     const np = {
-      _id: record._id,
       itemCode: record.itemCode ?? record.productCode ?? "",
       name: record.name ?? "",
       category: record.category ?? "",
@@ -211,9 +246,15 @@ const AdminProductsPage = () => {
       unitPrice: record.unitPrice ?? record.price ?? 0,
       quantity: Number(record.quantity ?? 0),
       variations: record.variations ?? null,
+      shortDescription: record.shortDescription ?? "",
+      discountType: record.discountType ?? null,
+      discountValue: record.discountValue ?? null,
+      _id: record._id,
     };
     setEditingProduct(np);
     setShowVariation(!!np.variations);
+    setShowDiscount(false);
+    setBasePrice(Number(np.unitPrice ?? 0));
     setIsModalOpen(true);
     // Defer filling until after modal+form mount to avoid timing issues
     setTimeout(() => {
@@ -226,6 +267,7 @@ const AdminProductsPage = () => {
       form.setFieldsValue({
         itemCode: np.itemCode,
         name: np.name,
+        shortDescription: np.shortDescription,
         category: np.category,
         subcategory: np.subcategory,
         unitPrice: np.unitPrice,
@@ -242,9 +284,55 @@ const AdminProductsPage = () => {
   const columns = [
     { title: "Item Code", dataIndex: "itemCode", key: "itemCode" },
     { title: "Product Name", dataIndex: "name", key: "name" },
+    { title: "Short Description", dataIndex: "shortDescription", key: "shortDescription" },
+    {
+      title: "Discount",
+      key: "discount",
+      render: (_, record) => {
+        const type = record.discountType;
+        const val = record.discountValue;
+        if (!type || val == null) return <span style={{ color: "#888" }}>No Discount</span>;
+        // Show the value exactly as the admin entered:
+        // - percentage => stored in discountValue
+        // - fixed value => admin entered the fixed Rs price, which is the current unitPrice
+        const label =
+          type === "percentage"
+            ? `${val}%`
+            : `Rs ${Number(record.unitPrice ?? 0).toFixed(2)}`;
+        return (
+          <Tooltip title={label}>
+            <span>Discount Available</span>
+          </Tooltip>
+        );
+      },
+    },
     { title: "Category", dataIndex: "category", key: "category" },
     { title: "Subcategory", dataIndex: "subcategory", key: "subcategory" },
-    { title: "Unit Price", dataIndex: "unitPrice", key: "unitPrice" },
+    {
+      title: "Unit Price",
+      dataIndex: "unitPrice",
+      key: "unitPrice",
+      render: (value, record) => {
+        const type = record.discountType;
+        const val = Number(record.discountValue);
+        let original = null;
+        if (type === "percentage" && !Number.isNaN(val) && val > 0 && val < 90) {
+          const denom = 1 - val / 100;
+          if (denom > 0) original = (Number(value) / denom).toFixed(2);
+        } else if (type === "value" && !Number.isNaN(val) && val > 0) {
+          // For fixed discount, we stored the original price as discountValue
+          original = Number(val).toFixed(2);
+        }
+        const display = Number(value).toFixed(2);
+        return original ? (
+          <Tooltip title={`Original price: Rs ${original}`}>
+            <span>Rs {display}</span>
+          </Tooltip>
+        ) : (
+          <span>Rs {display}</span>
+        );
+      },
+    },
     { title: "Quantity", dataIndex: "quantity", key: "quantity" },
     {
       title: "Variation",
@@ -268,9 +356,16 @@ const AdminProductsPage = () => {
           <Button type="link" onClick={() => handleEdit(record)}>
             Edit
           </Button>
-          <Button type="link" danger onClick={() => handleDelete(record._id)}>
-            Delete
-          </Button>
+          <Popconfirm
+            title="Delete this product?"
+            okText="Yes"
+            cancelText="No"
+            onConfirm={() => handleDelete(record._id)}
+          >
+            <Button type="link" danger>
+              Delete
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -289,11 +384,13 @@ const AdminProductsPage = () => {
           flexWrap: "wrap",
         }}
       >
+        <Button onClick={() => navigate("/admin-dashboard")}>Back to Dashboard</Button>
+
         <Button type="primary" onClick={handleAddProduct}>
           ➕ Add Product
         </Button>
 
-        <Button onClick={fetchProducts}>🔄 Refresh</Button>
+        <Button onClick={fetchProducts}>Refresh</Button>
 
         <Button type="dashed" onClick={() => navigate("/admin/categories")}>
           🗂️ Manage Categories
@@ -307,11 +404,15 @@ const AdminProductsPage = () => {
             options={suggestions}
             value={searchValue}
             onChange={setSearchValue}
-            placeholder="Search by name or category..."
+            placeholder="Search by item code, name or category..."
             onSelect={(value) => {
-              const matched = products.filter(
-                (p) => (p?.name || "").toLowerCase() === value.toLowerCase()
-              );
+              const v = String(value || "").toLowerCase();
+              const matched = products.filter((p) => {
+                const name = (p?.name || "").toLowerCase();
+                const category = (p?.category || "").toLowerCase();
+                const code = (p?.itemCode ?? p?.productCode ?? "").toString().toLowerCase();
+                return name === v || category === v || code === v;
+              });
               setFilteredProducts(matched);
             }}
             allowClear
@@ -363,6 +464,10 @@ const AdminProductsPage = () => {
             <Input placeholder="Enter product name" />
           </Form.Item>
 
+          <Form.Item name="shortDescription" label="Short Description">
+            <Input.TextArea rows={2} placeholder="Optional short description" />
+          </Form.Item>
+
           <Form.Item
             name="category"
             label="Category"
@@ -406,7 +511,15 @@ const AdminProductsPage = () => {
             label="Unit Price"
             rules={[{ required: true, message: "Please enter unit price" }]}
           >
-            <InputNumber style={{ width: "100%" }} min={0} />
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              onChange={(val) => {
+                if (showDiscount) {
+                  setBasePrice(Number(val || 0));
+                }
+              }}
+            />
           </Form.Item>
 
           <Form.Item name="existingQuantity" label="Existing Quantity">
@@ -439,6 +552,76 @@ const AdminProductsPage = () => {
 
               <Form.Item name="color" label="Color">
                 <Input placeholder="Enter color" />
+              </Form.Item>
+            </>
+          )}
+
+          {/* Discount */}
+          <Form.Item label="Add Discount?">
+            <Button
+              type={showDiscount ? "primary" : "default"}
+              onClick={() => {
+                const next = !showDiscount;
+                if (next) {
+                  const current = Number(form.getFieldValue("unitPrice") || 0);
+                  setBasePrice(current);
+                } else {
+                  const bp = Number(basePrice ?? (form.getFieldValue("unitPrice") ?? 0));
+                  form.setFieldsValue({ discountType: undefined, discountValue: undefined, unitPrice: bp });
+                  setBasePrice(null);
+                }
+                setShowDiscount(next);
+              }}
+            >
+              {showDiscount ? "Discount Enabled" : "Add Discount"}
+            </Button>
+          </Form.Item>
+
+          {showDiscount && (
+            <>
+              <Form.Item name="discountType" label="Discount Type">
+                <Radio.Group>
+                  <Radio value="percentage">Percentage (%)</Radio>
+                  <Radio value="value">Fixed Value (Rs)</Radio>
+                </Radio.Group>
+              </Form.Item>
+
+              <Form.Item
+                name="discountValue"
+                label="Discount Value"
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, v) {
+                      if (!showDiscount) return Promise.resolve();
+                      const t = getFieldValue("discountType");
+                      const n = Number(v ?? 0);
+                      if (t === "percentage") {
+                        if (n < 0 || n > 90) {
+                          return Promise.reject("Percentage cannot exceed 90%.");
+                        }
+                      }
+                      if (t === "value") {
+                        const bp = Number(basePrice ?? getFieldValue("unitPrice") ?? 0);
+                        if (n > bp) {
+                          return Promise.reject("Fixed value cannot be greater than original price.");
+                        }
+                      }
+                      return Promise.resolve();
+                    },
+                  }),
+                ]}
+              >
+                <InputNumber
+                  style={{ width: "100%" }}
+                  min={0}
+                  formatter={(v) => {
+                    if (v == null || v === "") return "";
+                    if (discountTypeWatch === "percentage") return `${v}%`;
+                    if (discountTypeWatch === "value") return `Rs ${v}`;
+                    return `${v}`;
+                  }}
+                  parser={(v) => (v || "").replace(/[^0-9.]/g, "")}
+                />
               </Form.Item>
             </>
           )}
@@ -480,6 +663,9 @@ const AdminProductsPage = () => {
 };
 
 export default AdminProductsPage;
+
+
+
 
 
 

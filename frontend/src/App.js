@@ -17,10 +17,7 @@ function LayoutWrapper({ children }) {
   const location = useLocation();
 
   // Define routes that should NOT show Header/Footer
-  const isAdminRoute =
-    location.pathname.startsWith("/admin-dashboard") ||
-    location.pathname.startsWith("/admin/products") ||
-    location.pathname.startsWith("/admin-login");
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
   return (
     <>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Table,
   Button,
@@ -22,6 +23,7 @@ import {
 const { Panel } = Collapse;
 
 const CategoryManager = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
@@ -80,15 +82,13 @@ const CategoryManager = () => {
 
   return (
     <div style={{ padding: "30px" }}>
-      <h2>Manage Categories & Subcategories</h2>
-
-      <Button
-        type="primary"
-        style={{ marginBottom: 16 }}
-        onClick={() => setIsModalOpen(true)}
-      >
-        Add Category
-      </Button>
+      <h2 style={{ marginTop: 0 }}>Manage Categories & Subcategories</h2>
+      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+        <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
+        <Button type="primary" onClick={() => setIsModalOpen(true)}>
+          Add Category
+        </Button>
+      </div>
 
       <Collapse accordion>
         {categories.map((cat) => (
@@ -192,4 +192,3 @@ const CategoryManager = () => {
 };
 
 export default CategoryManager;
-
