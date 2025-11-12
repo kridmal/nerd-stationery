@@ -14,6 +14,25 @@ router.get("/", async (req, res) => {
   }
 });
 
+// · Update only minimum quantity (admin only)
+router.put("/:id/min-quantity", authAdmin, async (req, res) => {
+  try {
+    const { minQuantity } = req.body;
+    if (minQuantity == null || Number(minQuantity) < 0) {
+      return res.status(400).json({ message: "minQuantity must be a non-negative number" });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    product.minQuantity = Number(minQuantity);
+    const updated = await product.save();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating min quantity:", error);
+    res.status(400).json({ message: error.message });
+  }
+});
 // âœ… Add Product (admin only)
 router.post("/", authAdmin, async (req, res) => {
   try {
@@ -40,6 +59,25 @@ router.post("/", authAdmin, async (req, res) => {
       variations,
     });
 
+// · Update only minimum quantity (admin only)
+router.put("/:id/min-quantity", authAdmin, async (req, res) => {
+  try {
+    const { minQuantity } = req.body;
+    if (minQuantity == null || Number(minQuantity) < 0) {
+      return res.status(400).json({ message: "minQuantity must be a non-negative number" });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    product.minQuantity = Number(minQuantity);
+    const updated = await product.save();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating min quantity:", error);
+    res.status(400).json({ message: error.message });
+  }
+});
     const saved = await newProduct.save();
     res.status(201).json(saved);
   } catch (error) {
@@ -48,6 +86,25 @@ router.post("/", authAdmin, async (req, res) => {
   }
 });
 
+// · Update only minimum quantity (admin only)
+router.put("/:id/min-quantity", authAdmin, async (req, res) => {
+  try {
+    const { minQuantity } = req.body;
+    if (minQuantity == null || Number(minQuantity) < 0) {
+      return res.status(400).json({ message: "minQuantity must be a non-negative number" });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    product.minQuantity = Number(minQuantity);
+    const updated = await product.save();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating min quantity:", error);
+    res.status(400).json({ message: error.message });
+  }
+});
 // âœ… Update Product (admin only)
 router.put("/:id", authAdmin, async (req, res) => {
   try {
@@ -65,6 +122,25 @@ router.put("/:id", authAdmin, async (req, res) => {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
+// · Update only minimum quantity (admin only)
+router.put("/:id/min-quantity", authAdmin, async (req, res) => {
+  try {
+    const { minQuantity } = req.body;
+    if (minQuantity == null || Number(minQuantity) < 0) {
+      return res.status(400).json({ message: "minQuantity must be a non-negative number" });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    product.minQuantity = Number(minQuantity);
+    const updated = await product.save();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating min quantity:", error);
+    res.status(400).json({ message: error.message });
+  }
+});
     const newTotalQuantity =
       Number(product.quantity || 0) + Number(addNewQuantity || 0);
 
@@ -84,6 +160,25 @@ router.put("/:id", authAdmin, async (req, res) => {
   }
 });
 
+// · Update only minimum quantity (admin only)
+router.put("/:id/min-quantity", authAdmin, async (req, res) => {
+  try {
+    const { minQuantity } = req.body;
+    if (minQuantity == null || Number(minQuantity) < 0) {
+      return res.status(400).json({ message: "minQuantity must be a non-negative number" });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    product.minQuantity = Number(minQuantity);
+    const updated = await product.save();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating min quantity:", error);
+    res.status(400).json({ message: error.message });
+  }
+});
 // âœ… Delete Product (admin only)
 router.delete("/:id", authAdmin, async (req, res) => {
   try {
@@ -94,4 +189,24 @@ router.delete("/:id", authAdmin, async (req, res) => {
   }
 });
 
+// · Update only minimum quantity (admin only)
+router.put("/:id/min-quantity", authAdmin, async (req, res) => {
+  try {
+    const { minQuantity } = req.body;
+    if (minQuantity == null || Number(minQuantity) < 0) {
+      return res.status(400).json({ message: "minQuantity must be a non-negative number" });
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    product.minQuantity = Number(minQuantity);
+    const updated = await product.save();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating min quantity:", error);
+    res.status(400).json({ message: error.message });
+  }
+});
 export default router;
+

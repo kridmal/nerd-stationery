@@ -4,12 +4,13 @@ import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
-import ProductsPage from "./pages/ProductsPage";
+import ProductsPage from "./pages/ProductsCatalogPage";
 import ContactPage from "./pages/ContactPage";
 import AdminProductsPage from "./features/admin/pages/AdminProductsPage";
 import AdminLoginPage from "./features/admin/pages/AdminLoginPage";
 import AdminDashboardPage from "./features/admin/pages/AdminDashboardPage";
 import CategoryManager from "./features/admin/pages/CategoryManager";
+import ManageQuantityPage from "./features/admin/pages/ManageQuantityPage";
 
 
 function LayoutWrapper({ children }) {
@@ -46,6 +47,7 @@ function App() {
           <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
           <Route path="/admin/categories" element={<CategoryManager />} />
+          <Route path="/admin/manage-quantity" element={<ManageQuantityPage />} />
         </Routes>
       </LayoutWrapper>
     </Router>

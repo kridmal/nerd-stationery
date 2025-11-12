@@ -14,33 +14,34 @@ const AdminSidebar = () => {
 
   return (
     <div className="admin-sidebar">
-      <h2 className="sidebar-title">🖋️ Nerd Stationery Admin</h2>
+      <h2 className="sidebar-title">Nerd Stationery Admin</h2>
 
       <ul className="sidebar-menu">
         <li
           className={location.pathname === "/admin-dashboard" ? "active" : ""}
           onClick={() => navigate("/admin-dashboard")}
         >
-          🏠 Dashboard
+          Dashboard
         </li>
 
         <li
           className={location.pathname === "/admin/products" ? "active" : ""}
           onClick={() => navigate("/admin/products")}
         >
-          📦 Manage Products
+          Manage Products
         </li>
 
-        <li className="disabled">🧾 Manage Orders (Coming Soon)</li>
-        <li className="disabled">👥 Manage Users (Coming Soon)</li>
-        <li className="disabled">📊 Reports (Coming Soon)</li>
+        <li className="disabled">Manage Orders (Coming Soon)</li>
+        <li className="disabled">Manage Users (Coming Soon)</li>
+        <li className="disabled">Reports (Coming Soon)</li>
       </ul>
 
       <button className="logout-btn" onClick={handleLogout}>
-        🚪 Logout
+        Logout
       </button>
     </div>
   );
 };
 
 export default AdminSidebar;
+

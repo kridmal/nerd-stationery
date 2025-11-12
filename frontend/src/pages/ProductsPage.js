@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { getProducts } from "../services/api";
-import ProductCard from "../components/ProductCard/ProductCard";
+import React, { useEffect, useMemo, useState } from "react";
+import { getProducts, getCategories } from "../services/api";
+import ProductCard from "../components/ProductCard/ProductCard";\nimport "./ProductsPage.css";
 
 function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -15,7 +15,7 @@ function ProductsPage() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <h2>🛍️ Our Products</h2>
+      <h2>Ã°Å¸â€ºÂÃ¯Â¸Â Our Products</h2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
         {products.map((product) => (
           <ProductCard key={product._id} product={product} />

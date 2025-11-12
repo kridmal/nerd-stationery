@@ -80,14 +80,14 @@ const CategoryManager = () => {
 
   return (
     <div style={{ padding: "30px" }}>
-      <h2>📦 Manage Categories & Subcategories</h2>
+      <h2>Manage Categories & Subcategories</h2>
 
       <Button
         type="primary"
         style={{ marginBottom: 16 }}
         onClick={() => setIsModalOpen(true)}
       >
-        ➕ Add Category
+        Add Category
       </Button>
 
       <Collapse accordion>
@@ -104,7 +104,7 @@ const CategoryManager = () => {
                       setIsSubModalOpen(true);
                     }}
                   >
-                    ➕ Add Subcategory
+                    Add Subcategory
                   </Button>
                   <Popconfirm
                     title="Delete this category?"
@@ -192,3 +192,4 @@ const CategoryManager = () => {
 };
 
 export default CategoryManager;
+

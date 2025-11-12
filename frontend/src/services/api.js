@@ -1,20 +1,20 @@
-import axios from "axios";
+﻿import axios from "axios";
 
 // Create an Axios instance
 const API = axios.create({
   baseURL: "http://localhost:5000/api",
 });
 
-// ✅ Automatically attach admin token (if exists)
+// âœ… Automatically attach admin token (if exists)
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("adminToken");
-  if (token) {
+  if (token && token !== "undefined" && token !== "null") {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// ✅ Product APIs
+// âœ… Product APIs
 export const getProducts = async () => {
   try {
     const res = await API.get("/products");
@@ -55,7 +55,18 @@ export const deleteProduct = async (id) => {
   }
 };
 
-// ✅ Category APIs
+// Â· Minimum Quantity API
+export const updateProductMinQuantity = async (id, minQuantity) => {
+  try {
+    const res = await API.put(`/products/${id}/min-quantity`, { minQuantity });
+    return res.data;
+  } catch (error) {
+    console.error("Error updating product min quantity:", error);
+    throw error;
+  }
+};
+
+// âœ… Category APIs
 export const getCategories = async () => {
   try {
     const res = await API.get("/categories");
@@ -98,7 +109,7 @@ export const addSubcategory = async (categoryId, subcategoryName) => {
   }
 };
 
-// ✅ Subcategory APIs
+// âœ… Subcategory APIs
 export const addSubCategory = async (data) => {
   const res = await API.post("/categories/sub", data);
   return res.data;
@@ -116,3 +127,28 @@ export const deleteSubCategory = async (categoryId, subcategoryId) => {
 
 
 export default API;
+
+
+// Handle auth errors globally: clear token and redirect to admin login
+API.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    const status = error?.response?.status;
+    const msg = String(error?.response?.data?.message || "").toLowerCase();
+    const isAuthError =
+      status === 401 ||
+      status === 403 ||
+      msg.includes("invalid token") ||
+      msg.includes("jwt");
+    if (isAuthError) {
+      try {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminInfo");
+      } catch (_) {}
+      if (typeof window !== "undefined") {
+        window.location.href = "/admin-login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);

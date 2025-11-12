@@ -53,11 +53,11 @@ function ProductForm({ onSave, editingProduct, clearEditing }) {
       if (uploadData.secure_url) {
         setForm((prev) => ({ ...prev, imageUrl: uploadData.secure_url }));
       } else {
-        alert("❌ Upload failed. Check Cloudinary settings.");
+        alert("Upload failed. Check Cloudinary settings.");
       }
     } catch (error) {
       console.error(error);
-      alert("❌ Image upload failed.");
+      alert("Image upload failed.");
     } finally {
       setUploading(false);
     }
@@ -67,7 +67,7 @@ function ProductForm({ onSave, editingProduct, clearEditing }) {
     e.preventDefault();
 
     if (!form.name || !form.category || !form.price || !form.quantity) {
-      alert("⚠️ Please fill all required fields.");
+      alert("Please fill all required fields.");
       return;
     }
 
@@ -79,10 +79,10 @@ function ProductForm({ onSave, editingProduct, clearEditing }) {
 
       if (editingProduct?._id) {
         await API.put(`/products/${editingProduct._id}`, form, config);
-        alert("✅ Product updated successfully!");
+        alert("Product updated successfully!");
       } else {
         await API.post("/products", form, config);
-        alert("✅ Product added successfully!");
+        alert("Product added successfully!");
       }
 
       setForm({
@@ -100,13 +100,13 @@ function ProductForm({ onSave, editingProduct, clearEditing }) {
       onSave();
     } catch (error) {
       console.error(error);
-      alert("❌ Error saving product.");
+      alert("Error saving product.");
     }
   };
 
   return (
     <form className="product-form" onSubmit={handleSubmit}>
-      <h3>{editingProduct ? "✏️ Edit Product" : "➕ Add New Product"}</h3>
+      <h3>{editingProduct ? "Edit Product" : "Add New Product"}</h3>
       <div className="form-grid">
         <input
           type="text"
@@ -193,3 +193,4 @@ function ProductForm({ onSave, editingProduct, clearEditing }) {
 }
 
 export default ProductForm;
+

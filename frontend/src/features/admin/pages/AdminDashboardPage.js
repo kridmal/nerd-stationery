@@ -41,9 +41,9 @@ const AdminDashboardPage = () => {
         <section className="dashboard-reports">
           <h2>Recent Activities</h2>
           <ul>
-            <li>🛒 New order from John Doe</li>
-            <li>📦 Product “Notebook Set” restocked</li>
-            <li>👤 New customer registered</li>
+            <li>New order from John Doe</li>
+            <li>Product "Notebook Set" restocked</li>
+            <li>New customer registered</li>
           </ul>
         </section>
       </div>
@@ -52,3 +52,4 @@ const AdminDashboardPage = () => {
 };
 
 export default AdminDashboardPage;
+

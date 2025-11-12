@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿﻿import React, { useEffect, useState } from "react";
 import {
   Table,
   Button,
@@ -55,20 +55,55 @@ const AdminProductsPage = () => {
     }
   };
 
-  // ✅ Temporary subcategory data (can later fetch from backend)
-  useEffect(() => {
-    setSubcategories([
-      { _id: "1", name: "Engine Parts" },
-      { _id: "2", name: "Electrical Items" },
-      { _id: "3", name: "Body Accessories" },
-      { _id: "4", name: "Interior Parts" },
-    ]);
-  }, []);
+  // Subcategories are derived from the selected category
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
   }, []);
+
+  // Ensure form fields reflect correct quantities when modal opens
+  useEffect(() => {
+    if (!isModalOpen) return;
+    if (editingProduct) {
+      // Sync subcategories list to the editing product's category
+      const np = {
+        itemCode: editingProduct.itemCode ?? editingProduct.productCode ?? "",
+        name: editingProduct.name ?? "",
+        category: editingProduct.category ?? "",
+        subcategory: editingProduct.subcategory ?? "",
+        unitPrice: editingProduct.unitPrice ?? editingProduct.price ?? 0,
+        quantity: Number(editingProduct.quantity ?? 0),
+        variations: editingProduct.variations ?? null,
+      };
+      const cat = (categories || []).find(
+        (c) => (c?.name || "").toLowerCase() === (np.category || "").toLowerCase()
+      );
+      let list = Array.isArray(cat?.subcategories) ? [...cat.subcategories] : [];
+      if (
+        np.subcategory &&
+        !list.find((s) => (s?.name || "").toLowerCase() === np.subcategory.toLowerCase())
+      ) {
+        list.unshift({ _id: "__current__", name: np.subcategory });
+      }
+      setSubcategories(list);
+      form.setFieldsValue({
+        itemCode: np.itemCode,
+        name: np.name,
+        category: np.category,
+        subcategory: np.subcategory,
+        unitPrice: np.unitPrice,
+        existingQuantity: np.quantity,
+        addNewQuantity: null,
+        brand: np.variations?.brand || "",
+        size: np.variations?.size || "",
+        color: np.variations?.color || "",
+      });
+    } else {
+      form.setFieldsValue({ existingQuantity: 0, addNewQuantity: 0 });
+      setSubcategories([]);
+    }
+  }, [isModalOpen, editingProduct, categories, form]);
 
   // ✅ Debounced search
   useEffect(() => {
@@ -100,8 +135,11 @@ const AdminProductsPage = () => {
     try {
       setLoading(true);
 
-      const productData = {
-        ...values,
+      const base = {
+        name: values.name,
+        category: values.category,
+        subcategory: values.subcategory,
+        unitPrice: values.unitPrice,
         variations: showVariation
           ? {
               brand: values.brand || "",
@@ -112,9 +150,20 @@ const AdminProductsPage = () => {
       };
 
       if (editingProduct) {
+        const productData = {
+          ...base,
+          itemCode: editingProduct.itemCode,
+          addNewQuantity: Number(values.addNewQuantity || 0),
+        };
         await updateProduct(editingProduct._id, productData);
         message.success("Product updated successfully!");
       } else {
+        const productData = {
+          ...base,
+          itemCode: values.itemCode,
+          existingQuantity: 0, // default existing quantity stays 0 for add
+          addNewQuantity: Number(values.addNewQuantity || 0),
+        };
         await addProduct(productData);
         message.success("Product added successfully!");
       }
@@ -125,7 +174,8 @@ const AdminProductsPage = () => {
       setEditingProduct(null);
       setShowVariation(false);
     } catch (error) {
-      message.error("Failed to save product.");
+      const msg = error?.response?.data?.message || error.message || "Failed to save product.";
+      message.error(msg);
     } finally {
       setLoading(false);
     }
@@ -146,28 +196,46 @@ const AdminProductsPage = () => {
   const handleAddProduct = () => {
     setEditingProduct(null);
     form.resetFields();
-    form.setFieldsValue({ existingQuantity: 0 });
+    form.setFieldsValue({ existingQuantity: 0, addNewQuantity: 0 });
     setIsModalOpen(true);
   };
 
   // ✅ Edit Product
   const handleEdit = (record) => {
-    setEditingProduct(record);
+    const np = {
+      _id: record._id,
+      itemCode: record.itemCode ?? record.productCode ?? "",
+      name: record.name ?? "",
+      category: record.category ?? "",
+      subcategory: record.subcategory ?? "",
+      unitPrice: record.unitPrice ?? record.price ?? 0,
+      quantity: Number(record.quantity ?? 0),
+      variations: record.variations ?? null,
+    };
+    setEditingProduct(np);
+    setShowVariation(!!np.variations);
     setIsModalOpen(true);
-    setShowVariation(!!record.variations);
+    // Defer filling until after modal+form mount to avoid timing issues
+    setTimeout(() => {
+      // Ensure subcategories reflect the product's category
+      const cat = (categories || []).find(
+        (c) => (c?.name || "").toLowerCase() === (np.category || "").toLowerCase()
+      );
+      setSubcategories(cat?.subcategories || []);
 
-    form.setFieldsValue({
-      itemCode: record.itemCode,
-      name: record.name,
-      category: record.category,
-      subcategory: record.subcategory,
-      unitPrice: record.unitPrice,
-      existingQuantity: record.quantity,
-      addNewQuantity: null,
-      brand: record.variations?.brand || "",
-      size: record.variations?.size || "",
-      color: record.variations?.color || "",
-    });
+      form.setFieldsValue({
+        itemCode: np.itemCode,
+        name: np.name,
+        category: np.category,
+        subcategory: np.subcategory,
+        unitPrice: np.unitPrice,
+        existingQuantity: np.quantity,
+        addNewQuantity: null,
+        brand: np.variations?.brand || "",
+        size: np.variations?.size || "",
+        color: np.variations?.color || "",
+      });
+    }, 0);
   };
 
   // ✅ Table Columns
@@ -231,6 +299,8 @@ const AdminProductsPage = () => {
           🗂️ Manage Categories
         </Button>
 
+        <Button onClick={() => navigate("/admin/manage-quantity")}>📊 Manage Quantity</Button>
+
         <div style={{ marginLeft: "auto", minWidth: "250px" }}>
           <AutoComplete
             style={{ width: "100%" }}
@@ -275,7 +345,6 @@ const AdminProductsPage = () => {
           form={form}
           layout="vertical"
           onFinish={handleAddOrUpdate}
-          preserve={false}
           autoComplete="off"
         >
           <Form.Item
@@ -299,7 +368,17 @@ const AdminProductsPage = () => {
             label="Category"
             rules={[{ required: true, message: "Please select category" }]}
           >
-            <Select placeholder="Select category">
+            <Select
+              placeholder="Select category"
+              onChange={(val) => {
+                const cat = (categories || []).find(
+                  (c) => (c?.name || "") === val
+                );
+                setSubcategories(cat?.subcategories || []);
+                // reset subcategory when category changes
+                form.setFieldsValue({ subcategory: undefined });
+              }}
+            >
               {categories.map((cat) => (
                 <Select.Option key={cat._id} value={cat.name}>
                   {cat.name}
@@ -331,7 +410,7 @@ const AdminProductsPage = () => {
           </Form.Item>
 
           <Form.Item name="existingQuantity" label="Existing Quantity">
-            <InputNumber style={{ width: "100%" }} readOnly min={0} />
+            <InputNumber style={{ width: "100%" }} disabled min={0} />
           </Form.Item>
 
           <Form.Item name="addNewQuantity" label="Add New Quantity">
@@ -344,7 +423,7 @@ const AdminProductsPage = () => {
               type={showVariation ? "primary" : "default"}
               onClick={() => setShowVariation(!showVariation)}
             >
-              {showVariation ? "✅ Variation Enabled" : "➕ Add Variation"}
+              {showVariation ? "Variation Enabled" : "Add Variation"}
             </Button>
           </Form.Item>
 
@@ -363,6 +442,22 @@ const AdminProductsPage = () => {
               </Form.Item>
             </>
           )}
+
+          <Form.Item shouldUpdate={(prev, cur) =>
+              prev.addNewQuantity !== cur.addNewQuantity ||
+              prev.existingQuantity !== cur.existingQuantity
+            }>
+            {({ getFieldValue }) => {
+              const existing = Number(getFieldValue("existingQuantity") || 0);
+              const addNew = Number(getFieldValue("addNewQuantity") || 0);
+              const total = existing + addNew;
+              return (
+                <div style={{ textAlign: "right", color: "#555", marginTop: 8 }}>
+                  New Total Quantity: <strong>{total}</strong>
+                </div>
+              );
+            }}
+          </Form.Item>
 
           <Form.Item>
             <div
@@ -385,3 +480,7 @@ const AdminProductsPage = () => {
 };
 
 export default AdminProductsPage;
+
+
+
+

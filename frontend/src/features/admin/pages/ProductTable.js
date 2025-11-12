@@ -55,7 +55,7 @@ function ProductTable({ products, onEdit, onDelete }) {
       <div className="filter-bar">
         <input
           type="text"
-          placeholder="🔍 Search products..."
+          placeholder="Search products..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -111,10 +111,10 @@ function ProductTable({ products, onEdit, onDelete }) {
                 <td>{p.description}</td>
                 <td>
                   <button className="edit-btn" onClick={() => onEdit(p)}>
-                    ✏️
+                    Edit
                   </button>
                   <button className="delete-btn" onClick={() => handleDelete(p._id)}>
-                    🗑️
+                    Delete
                   </button>
                 </td>
               </tr>
@@ -133,3 +133,4 @@ function ProductTable({ products, onEdit, onDelete }) {
 }
 
 export default ProductTable;
+
