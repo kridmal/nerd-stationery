@@ -11,6 +11,7 @@ import AdminLoginPage from "./features/admin/pages/AdminLoginPage";
 import AdminDashboardPage from "./features/admin/pages/AdminDashboardPage";
 import CategoryManager from "./features/admin/pages/CategoryManager";
 import ManageQuantityPage from "./features/admin/pages/ManageQuantityPage";
+import NewArrivalPage from "./features/admin/pages/NewArrivalPage";
 
 
 function LayoutWrapper({ children }) {
@@ -45,6 +46,7 @@ function App() {
           <Route path="/admin/products" element={<AdminProductsPage />} />
           <Route path="/admin/categories" element={<CategoryManager />} />
           <Route path="/admin/manage-quantity" element={<ManageQuantityPage />} />
+          <Route path="/admin/new-arrivals" element={<NewArrivalPage />} />
         </Routes>
       </LayoutWrapper>
     </Router>

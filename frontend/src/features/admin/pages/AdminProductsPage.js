@@ -396,7 +396,7 @@ const AdminProductsPage = () => {
           🗂️ Manage Categories
         </Button>
 
-        <Button onClick={() => navigate("/admin/manage-quantity")}>📊 Manage Quantity</Button>
+        <Button onClick={() => navigate("/admin/manage-quantity")}>📊 Manage Quantity</Button> <Button onClick={() => navigate("/admin/new-arrivals")}>New Arrivals</Button>
 
         <div style={{ marginLeft: "auto", minWidth: "250px" }}>
           <AutoComplete
@@ -663,6 +663,7 @@ const AdminProductsPage = () => {
 };
 
 export default AdminProductsPage;
+
 
 
 
