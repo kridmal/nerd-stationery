@@ -18,7 +18,20 @@ function ProductsPage() {
       <h2>Ã°Å¸â€ºÂÃ¯Â¸Â Our Products</h2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
         {products.map((product) => (
-          <ProductCard key={product._id} product={product} />
+          <ProductCard
+            key={product._id}
+            image={product.imageUrl || product.image}
+            name={product.name}
+            finalPrice={
+              product.finalPrice ?? product.originalPrice ?? product.unitPrice ?? product.price
+            }
+            originalPrice={
+              product.originalPrice ?? product.unitPrice ?? product.price ?? product.finalPrice
+            }
+            discountType={product.discountType}
+            discountValue={product.discountValue}
+            description={product.shortDescription || product.description}
+          />
         ))}
       </div>
     </div>

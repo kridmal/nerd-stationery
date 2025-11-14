@@ -9,7 +9,28 @@ const variationSchema = new mongoose.Schema(
   { _id: false }
 );
 
-  const productSchema = new mongoose.Schema(
+const clampNumber = (value, min = 0, max = Number.POSITIVE_INFINITY) => {
+  const numericValue = Number(value) || 0;
+  return Math.min(Math.max(numericValue, min), max);
+};
+
+const calculateFinalPrice = (originalPrice, discountType, discountValue) => {
+  const basePrice = Number(originalPrice) || 0;
+  const type = discountType || "none";
+  let discountAmount = 0;
+
+  if (type === "percentage") {
+    const percentage = clampNumber(discountValue, 0, 100);
+    discountAmount = basePrice * (percentage / 100);
+  } else if (type === "fixed") {
+    discountAmount = clampNumber(discountValue, 0, basePrice);
+  }
+
+  const finalPrice = Math.max(0, basePrice - discountAmount);
+  return Number(finalPrice.toFixed(2));
+};
+
+const productSchema = new mongoose.Schema(
   {
     itemCode: {
       type: String,
@@ -22,6 +43,11 @@ const variationSchema = new mongoose.Schema(
       required: [true, "Product name is required"],
       trim: true,
     },
+    shortDescription: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     category: {
       type: String,
       required: [true, "Category is required"],
@@ -32,10 +58,26 @@ const variationSchema = new mongoose.Schema(
       required: [true, "Subcategory is required"],
       trim: true,
     },
-    unitPrice: {
+    originalPrice: {
       type: Number,
-      required: [true, "Unit price is required"],
-      min: [0, "Unit price cannot be negative"],
+      required: [true, "Original price is required"],
+      min: [0, "Original price cannot be negative"],
+    },
+    finalPrice: {
+      type: Number,
+      required: true,
+      min: [0, "Final price cannot be negative"],
+      default: 0,
+    },
+    discountType: {
+      type: String,
+      enum: ["none", "percentage", "fixed"],
+      default: "none",
+    },
+    discountValue: {
+      type: Number,
+      default: 0,
+      min: [0, "Discount value cannot be negative"],
     },
     quantity: {
       type: Number,
@@ -51,25 +93,55 @@ const variationSchema = new mongoose.Schema(
       type: variationSchema,
       default: null,
     },
-    discountType: {
-      type: String,
-      enum: ["percentage", "value", null],
-      default: null,
-    },
-    discountValue: {
-      type: Number,
-      default: null,
-      min: [0, "Discount value cannot be negative"],
-    },
-    shortDescription: {
-      type: String,
-      trim: true,
-      default: "",
-    },
   },
   {
     timestamps: true,
   }
 );
 
+productSchema.virtual("unitPrice")
+  .get(function getUnitPrice() {
+    return this.originalPrice;
+  })
+  .set(function setUnitPrice(value) {
+    this.originalPrice = value;
+  });
+
+productSchema.set("toJSON", { virtuals: true });
+productSchema.set("toObject", { virtuals: true });
+
+productSchema.pre("validate", function handlePricing(next) {
+  const product = this;
+
+  // Backfill legacy documents that only stored `unitPrice`
+  if (
+    (product.originalPrice == null || Number.isNaN(product.originalPrice)) &&
+    product.get("unitPrice") != null
+  ) {
+    product.originalPrice = Number(product.get("unitPrice")) || 0;
+  }
+
+  if (!["percentage", "fixed", "none"].includes(product.discountType)) {
+    product.discountType = "none";
+  }
+
+  if (product.discountType === "none") {
+    product.discountValue = 0;
+  } else if (product.discountType === "percentage") {
+    product.discountValue = clampNumber(product.discountValue, 0, 100);
+  } else if (product.discountType === "fixed") {
+    const base = Number(product.originalPrice) || 0;
+    product.discountValue = clampNumber(product.discountValue, 0, base);
+  }
+
+  product.finalPrice = calculateFinalPrice(
+    product.originalPrice,
+    product.discountType,
+    product.discountValue
+  );
+
+  next();
+});
+
+export { calculateFinalPrice };
 export default mongoose.model("Product", productSchema);

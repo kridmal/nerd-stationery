@@ -1,63 +1,182 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@500;600&family=Poppins:wght@400;500&display=swap");
+
 .home-container {
-  background-color: #f8f9fa;
-  color: #333;
-  text-align: center;
+  background-color: #f7f7f7;
+  color: #333333;
+  font-family: "Inter", "Poppins", "Montserrat", sans-serif;
+  min-height: 100vh;
+}
+
+.hero-carousel {
+  background: #f7f7f7;
 }
 
 .hero-carousel img {
   width: 100%;
-  height: 500px;
+  height: 520px;
   object-fit: cover;
+  filter: saturate(0.95);
 }
 
 .legend {
-  background: rgba(255, 255, 255, 0.85);
-  color: #333;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f1f1f;
   font-weight: 600;
   border-radius: 8px;
+  padding: 6px 14px;
+  text-transform: none;
+}
+
+.section-wrapper {
+  padding: 64px 5vw;
 }
 
 .new-arrivals {
-  padding: 40px 20px;
+  background: #ffffff;
+  border-radius: 24px;
+  margin: 48px 5vw;
+  padding: 48px 5vw;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
-.new-arrivals h2 {
+.section-heading {
   font-size: 2rem;
-  margin-bottom: 25px;
-  color: #222;
+  font-weight: 600;
+  color: #333333;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.section-heading::after {
+  content: "";
+  width: 42px;
+  height: 4px;
+  background: #ffc107;
+  border-radius: 100px;
+  margin-left: 12px;
+}
+
+.section-heading--discount {
+  color: #e53935;
+}
+
+.section-heading--discount::after {
+  background: #e53935;
+}
+
+.section-heading--packages {
+  color: #1a73e8;
+}
+
+.section-heading--packages::after {
+  background: #1a73e8;
 }
 
 .product-grid {
   display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
+
+@media (max-width: 1200px) {
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .product-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+.product-card {
+  border-radius: 16px !important;
+  overflow: hidden;
+}
+
+.section-wrapper p {
+  max-width: 760px;
+  margin: 0 auto 32px;
+  color: #5c5c5c;
+}
+
+.new-arrivals .product-grid,
+.discounts .product-grid {
+  margin-top: 24px;
+}
+
+.discounts {
+  background: #ffffff;
+  border-radius: 24px;
+  margin: 48px 5vw 60px;
+  padding: 48px 5vw;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.packages {
+  background: #ffffff;
+  border-radius: 24px;
+  margin: 48px 5vw 80px;
+  padding: 48px 5vw;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.packages-grid {
+  display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-  padding: 0 40px;
+  gap: 24px;
+  margin-top: 32px;
 }
 
-.social-footer {
-  margin-top: 60px;
-  padding: 30px 0;
-  background-color: #e9ecef;
-  border-top: 1px solid #ddd;
+.package-card {
+  background: linear-gradient(135deg, #f9fbff 0%, #ffffff 60%);
+  border: 1px solid rgba(26, 115, 232, 0.15);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 12px 30px rgba(26, 115, 232, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.social-footer h3 {
-  margin-bottom: 15px;
-  font-weight: 500;
+.package-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px rgba(26, 115, 232, 0.15);
 }
 
-.social-icons {
+.package-card__header {
   display: flex;
-  justify-content: center;
-  gap: 25px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
-.social-icons img {
-  width: 40px;
-  height: 40px;
-  transition: transform 0.2s ease;
+.package-card__header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1f1f1f;
 }
 
-.social-icons img:hover {
-  transform: scale(1.15);
+.package-card__price {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #1a73e8;
+}
+
+.package-card__items {
+  color: #4a4a4a;
+  margin-bottom: 12px;
+}
+
+.package-card__meta {
+  font-size: 0.9rem;
+  color: #1a73e8;
+  font-weight: 600;
 }

@@ -17,6 +17,13 @@ import { useNavigate } from "react-router-dom";
 
 const storageKey = "newArrivals";
 
+const toNumeric = (value) => {
+  if (value == null || value === "") return 0;
+  if (typeof value === "number") return value;
+  const parsed = Number(String(value).replace(/[^0-9.-]/g, ""));
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
 const NewArrivalPage = () => {
   const [products, setProducts] = useState([]);
   const [arrivals, setArrivals] = useState([]);
@@ -37,7 +44,14 @@ const NewArrivalPage = () => {
       }
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
-        setArrivals(Array.isArray(saved) ? saved : []);
+        const normalized = (Array.isArray(saved) ? saved : []).map((item) => ({
+          ...item,
+          finalPrice: toNumeric(item.finalPrice ?? item.unitPrice ?? 0),
+          originalPrice: toNumeric(
+            item.originalPrice ?? item.unitPrice ?? item.finalPrice ?? 0
+          ),
+        }));
+        setArrivals(normalized);
       } catch {
         setArrivals([]);
       }
@@ -60,17 +74,27 @@ const NewArrivalPage = () => {
       (x) => (x.itemCode || x.productCode || "").toLowerCase() === code
     );
     if (p) {
+      const finalPrice = toNumeric(
+        p.finalPrice ?? p.originalPrice ?? p.unitPrice ?? p.price ?? 0
+      );
+      const originalPrice = toNumeric(
+        p.originalPrice ?? p.finalPrice ?? p.unitPrice ?? p.price ?? finalPrice
+      );
+      const discountStatus =
+        p.discountType && p.discountType !== "none"
+          ? p.discountType === "percentage"
+            ? `${Number(p.discountValue || 0)}% OFF`
+            : `Rs ${Number(p.discountValue || 0).toFixed(2)} OFF`
+          : "No Discount";
+
       form.setFieldsValue({
         name: p.name || "",
         shortDescription: p.shortDescription || "",
-        unitPrice: p.unitPrice ?? p.price ?? 0,
+        finalPrice,
+        originalPrice,
         category: p.category || "",
         subcategory: p.subcategory || "",
-        discountStatus: p.discountType
-          ? p.discountType === "percentage"
-            ? `${p.discountValue}%`
-            : `Rs ${p.discountValue}`
-          : "No Discount",
+        discountStatus,
         brand: p.variations?.brand || "",
         size: p.variations?.size || "",
         color: p.variations?.color || "",
@@ -91,7 +115,8 @@ const NewArrivalPage = () => {
       itemCode: record.itemCode,
       name: record.name,
       shortDescription: record.shortDescription,
-      unitPrice: record.unitPrice,
+      finalPrice: record.finalPrice,
+      originalPrice: record.originalPrice,
       category: record.category,
       subcategory: record.subcategory,
       discountStatus: record.discountStatus,
@@ -108,7 +133,9 @@ const NewArrivalPage = () => {
         itemCode: vals.itemCode,
         name: vals.name,
         shortDescription: vals.shortDescription || "",
-        unitPrice: Number(vals.unitPrice || 0),
+        finalPrice: toNumeric(vals.finalPrice || 0),
+        originalPrice: toNumeric(vals.originalPrice || vals.finalPrice || 0),
+        unitPrice: toNumeric(vals.finalPrice || 0),
         category: vals.category,
         subcategory: vals.subcategory,
         discountStatus: vals.discountStatus || "No Discount",
@@ -138,7 +165,18 @@ const NewArrivalPage = () => {
     { title: "Short Description", dataIndex: "shortDescription", key: "shortDescription" },
     { title: "Category", dataIndex: "category", key: "category" },
     { title: "Subcategory", dataIndex: "subcategory", key: "subcategory" },
-    { title: "Unit Price", dataIndex: "unitPrice", key: "unitPrice" },
+    {
+      title: "Final Price",
+      dataIndex: "finalPrice",
+      key: "finalPrice",
+      render: (value) => `Rs ${toNumeric(value).toFixed(2)}`,
+    },
+    {
+      title: "Original Price",
+      dataIndex: "originalPrice",
+      key: "originalPrice",
+      render: (value) => `Rs ${toNumeric(value).toFixed(2)}`,
+    },
     { title: "Discount", dataIndex: "discountStatus", key: "discountStatus" },
     {
       title: "Variation",
@@ -222,8 +260,16 @@ const NewArrivalPage = () => {
             <Input.TextArea rows={2} />
           </Form.Item>
 
-          <Form.Item label="Unit Price" name="unitPrice" rules={[{ required: true, message: "Unit price is required" }]}>
-            <InputNumber min={0} style={{ width: "100%" }} />
+          <Form.Item
+            label="Final Price"
+            name="finalPrice"
+            rules={[{ required: true, message: "Final price is required" }]}
+          >
+            <InputNumber min={0} style={{ width: "100%" }} disabled />
+          </Form.Item>
+
+          <Form.Item label="Original Price" name="originalPrice">
+            <InputNumber min={0} style={{ width: "100%" }} disabled />
           </Form.Item>
 
           <Form.Item label="Category" name="category" rules={[{ required: true, message: "Category is required" }]}>
@@ -265,4 +311,3 @@ const NewArrivalPage = () => {
 };
 
 export default NewArrivalPage;
-

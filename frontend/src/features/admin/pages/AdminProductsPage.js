@@ -1,4 +1,4 @@
-﻿﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Table,
   Button,
@@ -12,7 +12,7 @@ import {
   Space,
   Popconfirm,
 } from "antd";
-import { Radio, Tooltip } from "antd";
+import { Tooltip } from "antd";
 import {
   getProducts,
   addProduct,
@@ -22,25 +22,103 @@ import {
 } from "../../../services/api";
 import { useNavigate } from "react-router-dom";
 
+const clamp = (value, min = 0, max = Number.POSITIVE_INFINITY) => {
+  const num = Number(value);
+  if (Number.isNaN(num)) return min;
+  return Math.min(Math.max(num, min), max);
+};
+
+const normalizeDiscountType = (type) => {
+  if (!type) return "none";
+  return type === "value" ? "fixed" : type;
+};
+
+const calculateFinalPrice = (originalPrice, discountType, discountValue) => {
+  const base = Number(originalPrice) || 0;
+  const type = normalizeDiscountType(discountType);
+  const value = Number(discountValue) || 0;
+
+  if (type === "percentage") {
+    const pct = clamp(value, 0, 100);
+    return Number(Math.max(0, base - base * (pct / 100)).toFixed(2));
+  }
+
+  if (type === "fixed") {
+    const fixed = clamp(value, 0, base);
+    return Number(Math.max(0, base - fixed).toFixed(2));
+  }
+
+  return Number(base.toFixed(2));
+};
+
+const formatCurrency = (value) => `Rs ${Number(value || 0).toFixed(2)}`;
+
+const formatDiscountLabel = (type, value) => {
+  const normalizedType = normalizeDiscountType(type);
+  const numericValue = safeNumber(value, 0);
+  if (normalizedType === "percentage") {
+    return `${numericValue}% OFF`;
+  }
+  if (normalizedType === "fixed") {
+    return `Rs ${numericValue.toFixed(2)} OFF`;
+  }
+  return "No Discount";
+};
+
+const safeNumber = (value, fallback = 0) => {
+  if (value == null || value === "") return fallback;
+  const parsed =
+    typeof value === "string"
+      ? Number(value.replace(/[^0-9.-]/g, ""))
+      : Number(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const deriveOriginalPrice = (product) =>
+  safeNumber(
+    product?.originalPrice ??
+      product?.unitPrice ??
+      product?.price ??
+      product?.finalPrice ??
+      0
+  );
+
+const deriveFinalPrice = (product) => {
+  if (product?.finalPrice != null) return safeNumber(product.finalPrice, 0);
+  const original = deriveOriginalPrice(product);
+  const type = normalizeDiscountType(product?.discountType);
+  const value = safeNumber(product?.discountValue, 0);
+  if (type === "none" || value === 0) {
+    return safeNumber(
+      product?.unitPrice ?? product?.price ?? product?.originalPrice ?? original,
+      original
+    );
+  }
+  return calculateFinalPrice(original, type, value);
+};
+
 const AdminProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]); // ✅ new state
+  const [subcategories, setSubcategories] = useState([]); // ? new state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form] = Form.useForm();
   const [searchValue, setSearchValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showVariation, setShowVariation] = useState(false);
-  const [showDiscount, setShowDiscount] = useState(false);
-  const [basePrice, setBasePrice] = useState(null);
   const [loading, setLoading] = useState(false);
-  const discountTypeWatch = Form.useWatch("discountType", form);
-  const discountValueWatch = Form.useWatch("discountValue", form);
+  const discountTypeWatch = normalizeDiscountType(Form.useWatch("discountType", form) || "none");
+  const discountValueWatch = Form.useWatch("discountValue", form) || 0;
+  const originalPriceWatch = Form.useWatch("originalPrice", form) || 0;
+  const finalPricePreview = useMemo(
+    () => calculateFinalPrice(originalPriceWatch, discountTypeWatch, discountValueWatch),
+    [originalPriceWatch, discountTypeWatch, discountValueWatch]
+  );
   const navigate = useNavigate();
 
-  // ✅ Fetch products
+  // ? Fetch products
   const fetchProducts = async () => {
     try {
       const data = await getProducts();
@@ -51,7 +129,7 @@ const AdminProductsPage = () => {
     }
   };
 
-  // ✅ Fetch categories
+  // ? Fetch categories
   const fetchCategories = async () => {
     try {
       const data = await getCategories();
@@ -72,16 +150,19 @@ const AdminProductsPage = () => {
   useEffect(() => {
     if (!isModalOpen) return;
     if (editingProduct) {
-      // Sync subcategories list to the editing product's category
       const np = {
         itemCode: editingProduct.itemCode ?? editingProduct.productCode ?? "",
         name: editingProduct.name ?? "",
         category: editingProduct.category ?? "",
         subcategory: editingProduct.subcategory ?? "",
-        unitPrice: editingProduct.unitPrice ?? editingProduct.price ?? 0,
+        originalPrice: deriveOriginalPrice(editingProduct),
         quantity: Number(editingProduct.quantity ?? 0),
         variations: editingProduct.variations ?? null,
+        shortDescription: editingProduct.shortDescription ?? "",
+        discountType: normalizeDiscountType(editingProduct.discountType),
+        discountValue: Number(editingProduct.discountValue ?? 0),
       };
+
       const cat = (categories || []).find(
         (c) => (c?.name || "").toLowerCase() === (np.category || "").toLowerCase()
       );
@@ -93,30 +174,34 @@ const AdminProductsPage = () => {
         list.unshift({ _id: "__current__", name: np.subcategory });
       }
       setSubcategories(list);
+
       form.setFieldsValue({
         itemCode: np.itemCode,
         name: np.name,
         category: np.category,
         subcategory: np.subcategory,
-        unitPrice: np.unitPrice,
+        originalPrice: np.originalPrice,
         existingQuantity: np.quantity,
         addNewQuantity: null,
+        shortDescription: np.shortDescription,
         brand: np.variations?.brand || "",
         size: np.variations?.size || "",
         color: np.variations?.color || "",
-        discountType: editingProduct?.discountType ?? undefined,
-        discountValue: editingProduct?.discountValue ?? undefined,
+        discountType: np.discountType || "none",
+        discountValue: np.discountType === "none" ? 0 : np.discountValue,
       });
-      setShowDiscount(false);
-      setBasePrice(Number(np.unitPrice ?? 0));
     } else {
-      form.setFieldsValue({ existingQuantity: 0, addNewQuantity: 0 });
+      form.setFieldsValue({
+        existingQuantity: 0,
+        addNewQuantity: 0,
+        discountType: "none",
+        discountValue: 0,
+      });
       setSubcategories([]);
-      setBasePrice(Number(form.getFieldValue("unitPrice") ?? 0));
     }
   }, [isModalOpen, editingProduct, categories, form]);
 
-  // ✅ Debounced search
+  // ? Debounced search
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!searchValue.trim()) {
@@ -137,37 +222,20 @@ const AdminProductsPage = () => {
     return () => clearTimeout(timeout);
   }, [searchValue, products]);
 
-  // Live update Unit Price when discount changes
-  useEffect(() => {
-    if (!isModalOpen || !showDiscount) return;
-    const bp = Number(basePrice ?? form.getFieldValue("unitPrice") ?? 0);
-    const dv = Number(discountValueWatch ?? 0);
-    const dt = discountTypeWatch;
-    if (!dt || isNaN(bp)) return;
-    let next = bp;
-    if (dt === "percentage") {
-      const pct = Math.min(Math.max(dv, 0), 90);
-      next = Number((bp * (1 - pct / 100)).toFixed(2));
-    } else if (dt === "value") {
-      next = Number((isNaN(dv) ? 0 : dv).toFixed(2));
-    }
-    const current = Number(form.getFieldValue("unitPrice") ?? 0);
-    if (!Number.isNaN(next) && current !== next) {
-      form.setFieldsValue({ unitPrice: next });
-    }
-  }, [isModalOpen, showDiscount, discountTypeWatch, discountValueWatch, basePrice]);
-
-  // ✅ Add or Update
+  // ? Add or Update
   const handleAddOrUpdate = async (values) => {
     try {
       setLoading(true);
 
-      const enteredDiscount = Number(values.discountValue ?? 0);
+      const normalizedDiscountType = normalizeDiscountType(values.discountType || "none");
+      const normalizedDiscountValue =
+        normalizedDiscountType === "none" ? 0 : Number(values.discountValue || 0);
+
       const base = {
         name: values.name,
         category: values.category,
         subcategory: values.subcategory,
-        unitPrice: values.unitPrice,
+        originalPrice: Number(values.originalPrice || 0),
         shortDescription: values.shortDescription || "",
         variations: showVariation
           ? {
@@ -176,13 +244,8 @@ const AdminProductsPage = () => {
               color: values.color || "",
             }
           : null,
-        discountType: showDiscount ? values.discountType ?? null : null,
-        // For percentage: store percent; For fixed value: store original/base price for tooltip
-        discountValue: showDiscount
-          ? (values.discountType === "percentage"
-              ? enteredDiscount
-              : Number(basePrice ?? values.unitPrice ?? 0))
-          : null,
+        discountType: normalizedDiscountType,
+        discountValue: normalizedDiscountValue,
       };
 
       if (editingProduct) {
@@ -197,7 +260,7 @@ const AdminProductsPage = () => {
         const productData = {
           ...base,
           itemCode: values.itemCode,
-          existingQuantity: 0, // default existing quantity stays 0 for add
+          existingQuantity: 0,
           addNewQuantity: Number(values.addNewQuantity || 0),
         };
         await addProduct(productData);
@@ -217,7 +280,7 @@ const AdminProductsPage = () => {
     }
   };
 
-  // ✅ Delete
+  // ? Delete
   const handleDelete = async (id) => {
     try {
       await deleteProduct(id);
@@ -228,111 +291,120 @@ const AdminProductsPage = () => {
     }
   };
 
-  // ✅ Add Product Button
+  // ? Add Product Button
   const handleAddProduct = () => {
     setEditingProduct(null);
     form.resetFields();
-    form.setFieldsValue({ existingQuantity: 0, addNewQuantity: 0 });
+    form.setFieldsValue({
+      existingQuantity: 0,
+      addNewQuantity: 0,
+      discountType: "none",
+      discountValue: 0,
+    });
+    setShowVariation(false);
+    setSubcategories([]);
     setIsModalOpen(true);
   };
 
-  // ✅ Edit Product
+  // ? Edit Product
   const handleEdit = (record) => {
     const np = {
       itemCode: record.itemCode ?? record.productCode ?? "",
       name: record.name ?? "",
       category: record.category ?? "",
       subcategory: record.subcategory ?? "",
-      unitPrice: record.unitPrice ?? record.price ?? 0,
+      originalPrice: deriveOriginalPrice(record),
       quantity: Number(record.quantity ?? 0),
       variations: record.variations ?? null,
       shortDescription: record.shortDescription ?? "",
-      discountType: record.discountType ?? null,
-      discountValue: record.discountValue ?? null,
+      discountType: normalizeDiscountType(record.discountType),
+      discountValue: Number(record.discountValue ?? 0),
       _id: record._id,
     };
     setEditingProduct(np);
     setShowVariation(!!np.variations);
-    setShowDiscount(false);
-    setBasePrice(Number(np.unitPrice ?? 0));
     setIsModalOpen(true);
-    // Defer filling until after modal+form mount to avoid timing issues
-    setTimeout(() => {
-      // Ensure subcategories reflect the product's category
-      const cat = (categories || []).find(
-        (c) => (c?.name || "").toLowerCase() === (np.category || "").toLowerCase()
-      );
-      setSubcategories(cat?.subcategories || []);
-
-      form.setFieldsValue({
-        itemCode: np.itemCode,
-        name: np.name,
-        shortDescription: np.shortDescription,
-        category: np.category,
-        subcategory: np.subcategory,
-        unitPrice: np.unitPrice,
-        existingQuantity: np.quantity,
-        addNewQuantity: null,
-        brand: np.variations?.brand || "",
-        size: np.variations?.size || "",
-        color: np.variations?.color || "",
-      });
-    }, 0);
   };
 
-  // ✅ Table Columns
+  // ? Table Columns
   const columns = [
     { title: "Item Code", dataIndex: "itemCode", key: "itemCode" },
     { title: "Product Name", dataIndex: "name", key: "name" },
-    { title: "Short Description", dataIndex: "shortDescription", key: "shortDescription" },
     {
-      title: "Discount",
-      key: "discount",
+      title: "Short Description",
+      dataIndex: "shortDescription",
+      key: "shortDescription",
+      render: (text) => text || "-",
+    },
+    {
+      title: "Original Price",
+      dataIndex: "originalPrice",
+      key: "originalPrice",
+      render: (_, record) => formatCurrency(deriveOriginalPrice(record)),
+    },
+    {
+      title: "Discount Type",
+      dataIndex: "discountType",
+      key: "discountType",
+      render: (value) => normalizeDiscountType(value || "none"),
+    },
+    {
+      title: "Discount Value",
+      key: "discountValue",
       render: (_, record) => {
-        const type = record.discountType;
-        const val = record.discountValue;
-        if (!type || val == null) return <span style={{ color: "#888" }}>No Discount</span>;
-        // Show the value exactly as the admin entered:
-        // - percentage => stored in discountValue
-        // - fixed value => admin entered the fixed Rs price, which is the current unitPrice
-        const label =
-          type === "percentage"
-            ? `${val}%`
-            : `Rs ${Number(record.unitPrice ?? 0).toFixed(2)}`;
+        const type = normalizeDiscountType(record.discountType) || "none";
+        if (type === "none") {
+          return <span style={{ color: "#888" }}>No Discount</span>;
+        }
+        const label = formatDiscountLabel(type, record.discountValue);
         return (
           <Tooltip title={label}>
-            <span>Discount Available</span>
+            <span>{label}</span>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: "Final Price (Auto)",
+      dataIndex: "finalPrice",
+      key: "finalPrice",
+      render: (value, record) => {
+        const finalValue =
+          value != null && value !== ""
+            ? safeNumber(value, deriveFinalPrice(record))
+            : deriveFinalPrice(record);
+        const originalValue = deriveOriginalPrice(record);
+        const normalizedType = normalizeDiscountType(record.discountType);
+        const hasDiscount =
+          normalizedType !== "none" &&
+          Number(record.discountValue) > 0 &&
+          originalValue > finalValue;
+        const label = hasDiscount
+          ? formatDiscountLabel(normalizedType, record.discountValue)
+          : "No Discount";
+
+        return (
+          <Tooltip
+            title={
+              hasDiscount ? (
+                <div>
+                  <div style={{ textDecoration: "line-through", color: "#ff4d4f" }}>
+                    {formatCurrency(originalValue)}
+                  </div>
+                  <div>{label}</div>
+                </div>
+              ) : (
+                "No Discount Applied"
+              )
+            }
+          >
+            <span>{formatCurrency(finalValue)}</span>
           </Tooltip>
         );
       },
     },
     { title: "Category", dataIndex: "category", key: "category" },
     { title: "Subcategory", dataIndex: "subcategory", key: "subcategory" },
-    {
-      title: "Unit Price",
-      dataIndex: "unitPrice",
-      key: "unitPrice",
-      render: (value, record) => {
-        const type = record.discountType;
-        const val = Number(record.discountValue);
-        let original = null;
-        if (type === "percentage" && !Number.isNaN(val) && val > 0 && val < 90) {
-          const denom = 1 - val / 100;
-          if (denom > 0) original = (Number(value) / denom).toFixed(2);
-        } else if (type === "value" && !Number.isNaN(val) && val > 0) {
-          // For fixed discount, we stored the original price as discountValue
-          original = Number(val).toFixed(2);
-        }
-        const display = Number(value).toFixed(2);
-        return original ? (
-          <Tooltip title={`Original price: Rs ${original}`}>
-            <span>Rs {display}</span>
-          </Tooltip>
-        ) : (
-          <span>Rs {display}</span>
-        );
-      },
-    },
     { title: "Quantity", dataIndex: "quantity", key: "quantity" },
     {
       title: "Variation",
@@ -373,7 +445,7 @@ const AdminProductsPage = () => {
 
   return (
     <div style={{ padding: "30px" }}>
-      <h2>📦 Manage Products</h2>
+      <h2>Manage Products</h2>
 
       <div
         style={{
@@ -387,16 +459,17 @@ const AdminProductsPage = () => {
         <Button onClick={() => navigate("/admin-dashboard")}>Back to Dashboard</Button>
 
         <Button type="primary" onClick={handleAddProduct}>
-          ➕ Add Product
+          Add Product
         </Button>
 
         <Button onClick={fetchProducts}>Refresh</Button>
 
         <Button type="dashed" onClick={() => navigate("/admin/categories")}>
-          🗂️ Manage Categories
+          Manage Categories
         </Button>
 
-        <Button onClick={() => navigate("/admin/manage-quantity")}>📊 Manage Quantity</Button> <Button onClick={() => navigate("/admin/new-arrivals")}>New Arrivals</Button>
+        <Button onClick={() => navigate("/admin/manage-quantity")}>Manage Quantity</Button>{" "}
+        <Button onClick={() => navigate("/admin/new-arrivals")}>New Arrivals</Button>
 
         <div style={{ marginLeft: "auto", minWidth: "250px" }}>
           <AutoComplete
@@ -427,7 +500,7 @@ const AdminProductsPage = () => {
         pagination={{ pageSize: 6 }}
       />
 
-      {/* ✅ Modal */}
+      {/* ? Modal */}
       <Modal
         title={editingProduct ? "Edit Product" : "Add Product"}
         open={isModalOpen}
@@ -507,19 +580,11 @@ const AdminProductsPage = () => {
           </Form.Item>
 
           <Form.Item
-            name="unitPrice"
-            label="Unit Price"
-            rules={[{ required: true, message: "Please enter unit price" }]}
+            name="originalPrice"
+            label="Original Price"
+            rules={[{ required: true, message: "Please enter original price" }]}
           >
-            <InputNumber
-              style={{ width: "100%" }}
-              min={0}
-              onChange={(val) => {
-                if (showDiscount) {
-                  setBasePrice(Number(val || 0));
-                }
-              }}
-            />
+            <InputNumber style={{ width: "100%" }} min={0} />
           </Form.Item>
 
           <Form.Item name="existingQuantity" label="Existing Quantity">
@@ -530,7 +595,7 @@ const AdminProductsPage = () => {
             <InputNumber style={{ width: "100%" }} min={0} />
           </Form.Item>
 
-          {/* ✅ Variations */}
+          {/* ? Variations */}
           <Form.Item label="Add Variation?">
             <Button
               type={showVariation ? "primary" : "default"}
@@ -556,75 +621,86 @@ const AdminProductsPage = () => {
             </>
           )}
 
-          {/* Discount */}
-          <Form.Item label="Add Discount?">
-            <Button
-              type={showDiscount ? "primary" : "default"}
-              onClick={() => {
-                const next = !showDiscount;
-                if (next) {
-                  const current = Number(form.getFieldValue("unitPrice") || 0);
-                  setBasePrice(current);
-                } else {
-                  const bp = Number(basePrice ?? (form.getFieldValue("unitPrice") ?? 0));
-                  form.setFieldsValue({ discountType: undefined, discountValue: undefined, unitPrice: bp });
-                  setBasePrice(null);
-                }
-                setShowDiscount(next);
-              }}
-            >
-              {showDiscount ? "Discount Enabled" : "Add Discount"}
-            </Button>
+          <Form.Item
+            name="discountType"
+            label="Apply Discount?"
+            initialValue="none"
+            tooltip="Choose how the discount should be applied"
+          >
+            <Select>
+              <Select.Option value="none">None</Select.Option>
+              <Select.Option value="percentage">Percentage (%)</Select.Option>
+              <Select.Option value="fixed">Fixed Value (Rs)</Select.Option>
+            </Select>
           </Form.Item>
 
-          {showDiscount && (
-            <>
-              <Form.Item name="discountType" label="Discount Type">
-                <Radio.Group>
-                  <Radio value="percentage">Percentage (%)</Radio>
-                  <Radio value="value">Fixed Value (Rs)</Radio>
-                </Radio.Group>
-              </Form.Item>
-
-              <Form.Item
-                name="discountValue"
-                label="Discount Value"
-                rules={[
-                  ({ getFieldValue }) => ({
-                    validator(_, v) {
-                      if (!showDiscount) return Promise.resolve();
-                      const t = getFieldValue("discountType");
-                      const n = Number(v ?? 0);
-                      if (t === "percentage") {
-                        if (n < 0 || n > 90) {
-                          return Promise.reject("Percentage cannot exceed 90%.");
-                        }
+          {discountTypeWatch !== "none" && (
+            <Form.Item
+              name="discountValue"
+              label="Discount Value"
+              rules={[
+                ({ getFieldValue }) => ({
+                  validator(_, v) {
+                    const t = getFieldValue("discountType");
+                    const n = Number(v ?? 0);
+                    if (t === "percentage") {
+                      if (n < 0 || n > 100) {
+                        return Promise.reject("Percentage must be between 0 and 100.");
                       }
-                      if (t === "value") {
-                        const bp = Number(basePrice ?? getFieldValue("unitPrice") ?? 0);
-                        if (n > bp) {
-                          return Promise.reject("Fixed value cannot be greater than original price.");
-                        }
+                    }
+                    if (t === "fixed") {
+                      const base = Number(getFieldValue("originalPrice") ?? 0);
+                      if (n > base) {
+                        return Promise.reject("Fixed discount cannot exceed original price.");
                       }
-                      return Promise.resolve();
-                    },
-                  }),
-                ]}
-              >
-                <InputNumber
-                  style={{ width: "100%" }}
-                  min={0}
-                  formatter={(v) => {
-                    if (v == null || v === "") return "";
-                    if (discountTypeWatch === "percentage") return `${v}%`;
-                    if (discountTypeWatch === "value") return `Rs ${v}`;
-                    return `${v}`;
-                  }}
-                  parser={(v) => (v || "").replace(/[^0-9.]/g, "")}
-                />
-              </Form.Item>
-            </>
+                    }
+                    return Promise.resolve();
+                  },
+                }),
+              ]}
+            >
+              <InputNumber
+                style={{ width: "100%" }}
+                min={0}
+                formatter={(v) => {
+                  if (v == null || v === "") return "";
+                  if (discountTypeWatch === "percentage") return `${v}%`;
+                  if (discountTypeWatch === "fixed") return `Rs ${v}`;
+                  return `${v}`;
+                }}
+                parser={(v) => (v || "").replace(/[^0-9.]/g, "")}
+              />
+            </Form.Item>
           )}
+
+          <Form.Item label="Final Price (auto)">
+            <Tooltip
+              title={
+                discountTypeWatch !== "none" && Number(discountValueWatch) > 0 ? (
+                  <div>
+                    <div style={{ textDecoration: "line-through" }}>
+                      {formatCurrency(originalPriceWatch)}
+                    </div>
+                    <div>{formatDiscountLabel(discountTypeWatch, discountValueWatch)}</div>
+                  </div>
+                ) : (
+                  "No Discount Applied"
+                )
+              }
+            >
+              <div
+                style={{
+                  padding: "8px 12px",
+                  border: "1px solid #d9d9d9",
+                  borderRadius: 6,
+                  background: "#fafafa",
+                  fontWeight: 600,
+                }}
+              >
+                {formatCurrency(finalPricePreview)}
+              </div>
+            </Tooltip>
+          </Form.Item>
 
           <Form.Item shouldUpdate={(prev, cur) =>
               prev.addNewQuantity !== cur.addNewQuantity ||
@@ -663,6 +739,8 @@ const AdminProductsPage = () => {
 };
 
 export default AdminProductsPage;
+
+
 
 
 

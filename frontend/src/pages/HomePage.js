@@ -1,71 +1,241 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircularProgress } from "@mui/material";
-import api from "../services/api"; // ✅ use default import (matches your backend setup)
+import { useLocation, useNavigate } from "react-router-dom";
+import api from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
 import "./HomePage.css";
 import { Carousel } from "react-responsive-carousel";
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 
-import facebookIcon from "../assets/facebook.png";
-import instagramIcon from "../assets/instagram.png";
-import whatsappIcon from "../assets/whatsapp.png";
+const NEW_ARRIVALS_STORAGE_KEY = "newArrivals";
+const PLACEHOLDER_IMAGE =
+  "https://via.placeholder.com/320x200.png?text=Product";
+
+const toNumber = (value, fallback = 0) => {
+  if (value == null || value === "") return fallback;
+  const parsed =
+    typeof value === "string"
+      ? Number(value.replace(/[^0-9.-]/g, ""))
+      : Number(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const formatCurrency = (value) => `Rs ${Number(value || 0).toFixed(2)}`;
+
+const buildProductCardData = (item) => ({
+  key: item._id || item.itemCode || item.id || item.name,
+  image: item.imageUrl || item.image || PLACEHOLDER_IMAGE,
+  name: item.name,
+  finalPrice:
+    item.finalPrice ?? item.originalPrice ?? item.unitPrice ?? item.price ?? 0,
+  originalPrice:
+    item.originalPrice ?? item.unitPrice ?? item.price ?? item.finalPrice ?? 0,
+  discountType: item.discountType,
+  discountValue: item.discountValue,
+  description: item.shortDescription || item.description || "",
+  price: item.price,
+});
+
+const summarizePackageItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return "Includes a curated mix of our best-selling stationery picks.";
+  }
+  const preview = items.slice(0, 4);
+  const extra = items.length - preview.length;
+  return `Includes: ${preview.join(", ")}${extra > 0 ? ` +${extra} more` : ""}`;
+};
 
 function HomePage() {
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [newArrivals, setNewArrivals] = useState([]);
+  const [packages, setPackages] = useState([]);
+  const [loadingPackages, setLoadingPackages] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const newArrivalsRef = useRef(null);
+  const discountsRef = useRef(null);
+  const packagesRef = useRef(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // ✅ Updated to match `api.js` default export
         const response = await api.get("/products");
         const data = response.data;
-
-        if (data && data.length > 0) {
+        if (Array.isArray(data) && data.length > 0) {
           setProducts(data);
         } else {
-          // fallback mock data
-          setProducts([
-            {
-              id: 1,
-              name: "Luxury Notebook",
-              price: "$12.99",
-              description: "Premium paper with elegant cover.",
-              image:
-                "https://images.unsplash.com/photo-1522202176988-66273c2fd55f",
-            },
-            {
-              id: 2,
-              name: "Designer Pen",
-              price: "$7.50",
-              description: "Smooth ink flow with modern design.",
-              image:
-                "https://images.unsplash.com/photo-1581579188871-45ea61f2a0c8",
-            },
-            {
-              id: 3,
-              name: "Art Sketchbook",
-              price: "$14.99",
-              description: "Ideal for sketches and journaling.",
-              image:
-                "https://images.unsplash.com/photo-1503602642458-232111445657",
-            },
-          ]);
+          setProducts([]);
         }
       } catch (error) {
         console.error("Error fetching products:", error);
+        setProducts([]);
       } finally {
-        setLoading(false);
+        setLoadingProducts(false);
       }
     };
 
     fetchData();
   }, []);
 
+  const loadNewArrivals = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(NEW_ARRIVALS_STORAGE_KEY) || "[]";
+      const parsed = JSON.parse(raw);
+      setNewArrivals(Array.isArray(parsed) ? parsed : []);
+    } catch (error) {
+      console.error("Failed to read new arrivals:", error);
+      setNewArrivals([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadNewArrivals();
+    const handler = (event) => {
+      if (event.key === NEW_ARRIVALS_STORAGE_KEY) {
+        loadNewArrivals();
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, [loadNewArrivals]);
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const response = await api.get("/packages");
+        const data = response.data;
+        setPackages(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Error fetching packages:", error);
+        setPackages([]);
+      } finally {
+        setLoadingPackages(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
+  const productIndex = useMemo(() => {
+    const map = {};
+    (products || []).forEach((product) => {
+      const code = (product?.itemCode || product?.productCode || "").toLowerCase();
+      if (code) {
+        map[code] = product;
+      }
+    });
+    return map;
+  }, [products]);
+
+  const preparedArrivals = useMemo(() => {
+    return (newArrivals || []).map((entry) => {
+      const code = (entry.itemCode || "").toLowerCase();
+      const matchedProduct = productIndex[code];
+      const finalPrice = toNumber(
+        entry.finalPrice ??
+          entry.unitPrice ??
+          matchedProduct?.finalPrice ??
+          matchedProduct?.price ??
+          0
+      );
+      const originalPrice = toNumber(
+        entry.originalPrice ??
+          entry.unitPrice ??
+          matchedProduct?.originalPrice ??
+          matchedProduct?.price ??
+          finalPrice
+      );
+
+      return {
+        ...entry,
+        finalPrice,
+        originalPrice,
+        discountType: entry.discountType ?? matchedProduct?.discountType,
+        discountValue: entry.discountValue ?? matchedProduct?.discountValue,
+        description:
+          entry.shortDescription ||
+          matchedProduct?.shortDescription ||
+          matchedProduct?.description ||
+          "",
+        image:
+          entry.image ||
+          matchedProduct?.imageUrl ||
+          matchedProduct?.image ||
+          PLACEHOLDER_IMAGE,
+      };
+    });
+  }, [newArrivals, productIndex]);
+
+  const discountedProducts = useMemo(() => {
+    return (products || []).filter(
+      (product) =>
+        product.discountType &&
+        product.discountType !== "none" &&
+        product.discountValue != null
+    );
+  }, [products]);
+
+  const discountedCards = useMemo(
+    () =>
+      discountedProducts.map((product) => {
+        const data = buildProductCardData(product);
+        const badgeLabel =
+          product.discountType === "percentage" && product.discountValue != null
+            ? `${Math.round(product.discountValue)}% OFF`
+            : "SALE";
+        return {
+          ...data,
+          badgeLabel,
+          badgeColor: "#E53935",
+        };
+      }),
+    [discountedProducts]
+  );
+
+  const discountTitle =
+    discountedCards.length === 0
+      ? "No active discounts right now. Check back soon!"
+      : `Special Discounts (${discountedCards.length})`;
+
+  const preparedPackages = useMemo(() => {
+    return (packages || []).map((pkg) => {
+      const items = Array.isArray(pkg.products)
+        ? pkg.products.map((product) => product?.name).filter(Boolean)
+        : [];
+      return {
+        id: pkg._id || pkg.id || pkg.name,
+        name: pkg.name || "Curated Package",
+        price: toNumber(pkg.price, 0),
+        items,
+        description: summarizePackageItems(items),
+      };
+    });
+  }, [packages]);
+
+  useEffect(() => {
+    const target = location.state?.scrollTo;
+    if (!target) return;
+
+    const refMap = {
+      "new-arrivals": newArrivalsRef,
+      discounts: discountsRef,
+      packages: packagesRef,
+    };
+    const ref = refMap[target] || null;
+
+    if (ref?.current) {
+      requestAnimationFrame(() => {
+        ref.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
+
   return (
     <div className="home-container">
       <Carousel
-        showArrows={true}
+        showArrows
         autoPlay
         infiniteLoop
         interval={3000}
@@ -96,36 +266,109 @@ function HomePage() {
         </div>
       </Carousel>
 
-      <section className="new-arrivals">
-        <h2>🆕 New Arrivals</h2>
-
-        {loading ? (
-          <div style={{ marginTop: "40px" }}>
+      <section
+        className="section-wrapper new-arrivals"
+        id="new-arrivals-section"
+        ref={newArrivalsRef}
+      >
+        <h2 className="section-heading">New Arrivals</h2>
+        <p>
+          Fresh drops and limited-run favorites handpicked by the Nerd Stationery team.
+          Discover what just landed before it sells out.
+        </p>
+        {loadingProducts && preparedArrivals.length === 0 ? (
+          <div style={{ marginTop: 40 }}>
             <CircularProgress />
           </div>
+        ) : preparedArrivals.length === 0 ? (
+          <p style={{ marginTop: 24, color: "#666" }}>
+            No new arrivals have been published yet. Please check back soon!
+          </p>
         ) : (
           <div className="product-grid">
-            {products.map((item) => (
-              <ProductCard key={item.id || item._id} {...item} />
+            {preparedArrivals.map((item) => (
+              <ProductCard
+                key={item.id || item.itemCode || item.name}
+                image={item.image}
+                name={item.name}
+                finalPrice={item.finalPrice}
+                originalPrice={item.originalPrice}
+                discountType={item.discountType}
+                discountValue={item.discountValue}
+                description={item.description}
+                price={item.price}
+                badgeLabel="NEW"
+                badgeColor="#FFC107"
+              />
             ))}
           </div>
         )}
       </section>
 
-      <footer className="social-footer">
-        <h3>Connect with us</h3>
-        <div className="social-icons">
-          <a href="https://facebook.com" target="_blank" rel="noreferrer">
-            <img src={facebookIcon} alt="Facebook" />
-          </a>
-          <a href="https://instagram.com" target="_blank" rel="noreferrer">
-            <img src={instagramIcon} alt="Instagram" />
-          </a>
-          <a href="https://wa.me/1234567890" target="_blank" rel="noreferrer">
-            <img src={whatsappIcon} alt="WhatsApp" />
-          </a>
-        </div>
-      </footer>
+      <section
+        className="section-wrapper discounts"
+        id="discounts-section"
+        ref={discountsRef}
+      >
+        <h2 className="section-heading section-heading--discount">
+          Special Discounts
+        </h2>
+        <p style={{ color: "#666", marginBottom: 24 }}>{discountTitle}</p>
+        {loadingProducts && discountedCards.length === 0 ? (
+          <div style={{ marginTop: 40 }}>
+            <CircularProgress />
+          </div>
+        ) : discountedCards.length === 0 ? (
+          <p style={{ color: "#888" }}>
+            Currently there are no discounted items. Keep an eye out for future offers!
+          </p>
+        ) : (
+          <div className="product-grid">
+            {discountedCards.map((item) => (
+              <ProductCard key={item.key} {...item} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section
+        className="section-wrapper packages"
+        id="packages-section"
+        ref={packagesRef}
+      >
+        <h2 className="section-heading section-heading--packages">Curated Packages</h2>
+        <p>
+          Thoughtfully bundled stationery sets designed to save you time and money across
+          study, creative, and office workflows.
+        </p>
+        {loadingPackages && preparedPackages.length === 0 ? (
+          <div style={{ marginTop: 40 }}>
+            <CircularProgress />
+          </div>
+        ) : preparedPackages.length === 0 ? (
+          <p style={{ color: "#666", marginTop: 16 }}>
+            There are no packages available right now. Please check back soon!
+          </p>
+        ) : (
+          <div className="packages-grid">
+            {preparedPackages.map((pkg) => (
+              <article className="package-card" key={pkg.id}>
+                <div className="package-card__header">
+                  <h3>{pkg.name}</h3>
+                  <span className="package-card__price">
+                    {formatCurrency(pkg.price)}
+                  </span>
+                </div>
+                <p className="package-card__items">{pkg.description}</p>
+                <div className="package-card__meta">
+                  {pkg.items.length > 0 ? `${pkg.items.length} items included` : "Flexible mix"}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
     </div>
   );
 }

@@ -1,8 +1,20 @@
 import express from "express";
 import Product from "../models/Product.js";
 import authAdmin from "../middleware/authAdmin.js";
+import { createProduct, updateProduct } from "../controllers/productController.js";
 
 const router = express.Router();
+const allowedDiscountTypes = ["none", "percentage", "fixed"];
+
+const normalizeDiscountType = (type) => {
+  if (allowedDiscountTypes.includes(type)) return type;
+  return "none";
+};
+
+const toNumber = (value) => {
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
 
 // Get all products
 router.get("/", async (req, res) => {
@@ -15,92 +27,19 @@ router.get("/", async (req, res) => {
 });
 
 // Add Product (admin only)
-router.post("/", authAdmin, async (req, res) => {
-  try {
-    const {
-      itemCode,
-      name,
-      category,
-      subcategory,
-      unitPrice,
-      existingQuantity = 0,
-      addNewQuantity = 0,
-      variations,
-      discountType = null,
-      discountValue = null,
-      shortDescription = "",
-    } = req.body;
-
-    const totalQuantity = Number(existingQuantity) + Number(addNewQuantity);
-
-    const newProduct = new Product({
-      itemCode,
-      name,
-      category,
-      subcategory,
-      unitPrice,
-      quantity: totalQuantity,
-      variations,
-      discountType,
-      discountValue,
-      shortDescription,
-    });
-
-    const saved = await newProduct.save();
-    res.status(201).json(saved);
-  } catch (error) {
-    console.error("Error adding product:", error);
-    res.status(400).json({ message: error.message });
-  }
-});
+router.post("/", authAdmin, createProduct);
 
 // Update Product (admin only)
-router.put("/:id", authAdmin, async (req, res) => {
-  try {
-    const {
-      itemCode,
-      name,
-      category,
-      subcategory,
-      unitPrice,
-      existingQuantity = 0,
-      addNewQuantity = 0,
-      variations,
-      discountType = null,
-      discountValue = null,
-      shortDescription = "",
-    } = req.body;
-
-    const product = await Product.findById(req.params.id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-
-    const newTotalQuantity = Number(product.quantity || 0) + Number(addNewQuantity || 0);
-
-    product.itemCode = itemCode;
-    product.name = name;
-    product.category = category;
-    product.subcategory = subcategory;
-    product.unitPrice = unitPrice;
-    product.quantity = newTotalQuantity;
-    product.variations = variations || null;
-    product.discountType = discountType;
-    product.discountValue = discountValue;
-    product.shortDescription = shortDescription;
-
-    const updated = await product.save();
-    res.json(updated);
-  } catch (error) {
-    console.error("Error updating product:", error);
-    res.status(400).json({ message: error.message });
-  }
-});
+router.put("/:id", authAdmin, updateProduct);
 
 // Update only minimum quantity (admin only)
 router.put("/:id/min-quantity", authAdmin, async (req, res) => {
   try {
     const { minQuantity } = req.body;
     if (minQuantity == null || Number(minQuantity) < 0) {
-      return res.status(400).json({ message: "minQuantity must be a non-negative number" });
+      return res
+        .status(400)
+        .json({ message: "minQuantity must be a non-negative number" });
     }
 
     const product = await Product.findById(req.params.id);
