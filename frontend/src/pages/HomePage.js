@@ -1,48 +1,39 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CircularProgress } from "@mui/material";
+import { CircularProgress, IconButton } from "@mui/material";
+import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
+import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
 import "./HomePage.css";
 import { Carousel } from "react-responsive-carousel";
 import "react-responsive-carousel/lib/styles/carousel.min.css";
+import {
+  buildPackageSummary,
+  buildProductCardData,
+  formatCurrency,
+  PLACEHOLDER_IMAGE,
+  toNumber,
+} from "../utils/productUtils";
 
 const NEW_ARRIVALS_STORAGE_KEY = "newArrivals";
-const PLACEHOLDER_IMAGE =
-  "https://via.placeholder.com/320x200.png?text=Product";
+const VISIBLE_SLIDE_COUNT = 4;
 
-const toNumber = (value, fallback = 0) => {
-  if (value == null || value === "") return fallback;
-  const parsed =
-    typeof value === "string"
-      ? Number(value.replace(/[^0-9.-]/g, ""))
-      : Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
+const computeVisibleWindow = (items, start) => {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  if (items.length <= VISIBLE_SLIDE_COUNT) return items;
+  const window = [];
+  for (let i = 0; i < VISIBLE_SLIDE_COUNT; i += 1) {
+    const index = (start + i) % items.length;
+    window.push(items[index]);
+  }
+  return window;
 };
 
-const formatCurrency = (value) => `Rs ${Number(value || 0).toFixed(2)}`;
-
-const buildProductCardData = (item) => ({
-  key: item._id || item.itemCode || item.id || item.name,
-  image: item.imageUrl || item.image || PLACEHOLDER_IMAGE,
-  name: item.name,
-  finalPrice:
-    item.finalPrice ?? item.originalPrice ?? item.unitPrice ?? item.price ?? 0,
-  originalPrice:
-    item.originalPrice ?? item.unitPrice ?? item.price ?? item.finalPrice ?? 0,
-  discountType: item.discountType,
-  discountValue: item.discountValue,
-  description: item.shortDescription || item.description || "",
-  price: item.price,
-});
-
-const summarizePackageItems = (items) => {
-  if (!Array.isArray(items) || items.length === 0) {
-    return "Includes a curated mix of our best-selling stationery picks.";
-  }
-  const preview = items.slice(0, 4);
-  const extra = items.length - preview.length;
-  return `Includes: ${preview.join(", ")}${extra > 0 ? ` +${extra} more` : ""}`;
+const shiftIndex = (current, length, direction) => {
+  if (length <= VISIBLE_SLIDE_COUNT) return 0;
+  const next = (current + direction + length) % length;
+  return next;
 };
 
 function HomePage() {
@@ -56,6 +47,9 @@ function HomePage() {
   const newArrivalsRef = useRef(null);
   const discountsRef = useRef(null);
   const packagesRef = useRef(null);
+  const [arrivalStartIndex, setArrivalStartIndex] = useState(0);
+  const [discountStartIndex, setDiscountStartIndex] = useState(0);
+  const [packageStartIndex, setPackageStartIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -198,20 +192,59 @@ function HomePage() {
       ? "No active discounts right now. Check back soon!"
       : `Special Discounts (${discountedCards.length})`;
 
-  const preparedPackages = useMemo(() => {
-    return (packages || []).map((pkg) => {
-      const items = Array.isArray(pkg.products)
-        ? pkg.products.map((product) => product?.name).filter(Boolean)
-        : [];
-      return {
-        id: pkg._id || pkg.id || pkg.name,
-        name: pkg.name || "Curated Package",
-        price: toNumber(pkg.price, 0),
-        items,
-        description: summarizePackageItems(items),
-      };
-    });
-  }, [packages]);
+  const preparedPackages = useMemo(
+    () => (packages || []).map((pkg) => buildPackageSummary(pkg)),
+    [packages]
+  );
+
+  useEffect(() => {
+    setArrivalStartIndex(0);
+  }, [preparedArrivals.length]);
+
+  useEffect(() => {
+    setDiscountStartIndex(0);
+  }, [discountedCards.length]);
+
+  useEffect(() => {
+    setPackageStartIndex(0);
+  }, [preparedPackages.length]);
+
+  const visibleArrivals = useMemo(
+    () => computeVisibleWindow(preparedArrivals, arrivalStartIndex),
+    [preparedArrivals, arrivalStartIndex]
+  );
+
+  const visibleDiscounts = useMemo(
+    () => computeVisibleWindow(discountedCards, discountStartIndex),
+    [discountedCards, discountStartIndex]
+  );
+
+  const visiblePackages = useMemo(
+    () => computeVisibleWindow(preparedPackages, packageStartIndex),
+    [preparedPackages, packageStartIndex]
+  );
+
+  const canSlideArrivals = preparedArrivals.length > VISIBLE_SLIDE_COUNT;
+  const canSlideDiscounts = discountedCards.length > VISIBLE_SLIDE_COUNT;
+  const canSlidePackages = preparedPackages.length > VISIBLE_SLIDE_COUNT;
+
+  const handleArrivalSlide = (direction) => {
+    setArrivalStartIndex((prev) =>
+      shiftIndex(prev, preparedArrivals.length, direction)
+    );
+  };
+
+  const handleDiscountSlide = (direction) => {
+    setDiscountStartIndex((prev) =>
+      shiftIndex(prev, discountedCards.length, direction)
+    );
+  };
+
+  const handlePackageSlide = (direction) => {
+    setPackageStartIndex((prev) =>
+      shiftIndex(prev, preparedPackages.length, direction)
+    );
+  };
 
   useEffect(() => {
     const target = location.state?.scrollTo;
@@ -285,22 +318,40 @@ function HomePage() {
             No new arrivals have been published yet. Please check back soon!
           </p>
         ) : (
-          <div className="product-grid">
-            {preparedArrivals.map((item) => (
-              <ProductCard
-                key={item.id || item.itemCode || item.name}
-                image={item.image}
-                name={item.name}
-                finalPrice={item.finalPrice}
-                originalPrice={item.originalPrice}
-                discountType={item.discountType}
-                discountValue={item.discountValue}
-                description={item.description}
-                price={item.price}
-                badgeLabel="NEW"
-                badgeColor="#FFC107"
-              />
-            ))}
+          <div className="product-slider">
+            <IconButton
+              aria-label="View previous new arrivals"
+              onClick={() => handleArrivalSlide(-1)}
+              disabled={!canSlideArrivals}
+              className="product-slider__arrow"
+            >
+              <KeyboardArrowLeftIcon />
+            </IconButton>
+            <div className="product-slider__items">
+              {visibleArrivals.map((item) => (
+                <ProductCard
+                  key={item.id || item.itemCode || item.name}
+                  image={item.image}
+                  name={item.name}
+                  finalPrice={item.finalPrice}
+                  originalPrice={item.originalPrice}
+                  discountType={item.discountType}
+                  discountValue={item.discountValue}
+                  description={item.description}
+                  price={item.price}
+                  badgeLabel="NEW"
+                  badgeColor="#FFC107"
+                />
+              ))}
+            </div>
+            <IconButton
+              aria-label="View more new arrivals"
+              onClick={() => handleArrivalSlide(1)}
+              disabled={!canSlideArrivals}
+              className="product-slider__arrow"
+            >
+              <KeyboardArrowRightIcon />
+            </IconButton>
           </div>
         )}
       </section>
@@ -323,10 +374,28 @@ function HomePage() {
             Currently there are no discounted items. Keep an eye out for future offers!
           </p>
         ) : (
-          <div className="product-grid">
-            {discountedCards.map((item) => (
-              <ProductCard key={item.key} {...item} />
-            ))}
+          <div className="product-slider">
+            <IconButton
+              aria-label="View previous discounts"
+              onClick={() => handleDiscountSlide(-1)}
+              disabled={!canSlideDiscounts}
+              className="product-slider__arrow"
+            >
+              <KeyboardArrowLeftIcon />
+            </IconButton>
+            <div className="product-slider__items">
+              {visibleDiscounts.map((item) => (
+                <ProductCard key={item.key} {...item} />
+              ))}
+            </div>
+            <IconButton
+              aria-label="View more discounts"
+              onClick={() => handleDiscountSlide(1)}
+              disabled={!canSlideDiscounts}
+              className="product-slider__arrow"
+            >
+              <KeyboardArrowRightIcon />
+            </IconButton>
           </div>
         )}
       </section>
@@ -350,21 +419,39 @@ function HomePage() {
             There are no packages available right now. Please check back soon!
           </p>
         ) : (
-          <div className="packages-grid">
-            {preparedPackages.map((pkg) => (
-              <article className="package-card" key={pkg.id}>
-                <div className="package-card__header">
-                  <h3>{pkg.name}</h3>
-                  <span className="package-card__price">
-                    {formatCurrency(pkg.price)}
-                  </span>
-                </div>
-                <p className="package-card__items">{pkg.description}</p>
-                <div className="package-card__meta">
-                  {pkg.items.length > 0 ? `${pkg.items.length} items included` : "Flexible mix"}
-                </div>
-              </article>
-            ))}
+          <div className="product-slider">
+            <IconButton
+              aria-label="View previous packages"
+              onClick={() => handlePackageSlide(-1)}
+              disabled={!canSlidePackages}
+              className="product-slider__arrow"
+            >
+              <KeyboardArrowLeftIcon />
+            </IconButton>
+            <div className="product-slider__items product-slider__items--packages">
+              {visiblePackages.map((pkg) => (
+                <article className="package-card" key={pkg.id}>
+                  <div className="package-card__header">
+                    <h3>{pkg.name}</h3>
+                    <span className="package-card__price">
+                      {formatCurrency(pkg.price)}
+                    </span>
+                  </div>
+                  <p className="package-card__items">{pkg.description}</p>
+                  <div className="package-card__meta">
+                    {pkg.items.length > 0 ? `${pkg.items.length} items included` : "Flexible mix"}
+                  </div>
+                </article>
+              ))}
+            </div>
+            <IconButton
+              aria-label="View more packages"
+              onClick={() => handlePackageSlide(1)}
+              disabled={!canSlidePackages}
+              className="product-slider__arrow"
+            >
+              <KeyboardArrowRightIcon />
+            </IconButton>
           </div>
         )}
       </section>

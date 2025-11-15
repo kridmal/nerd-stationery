@@ -6,6 +6,9 @@ import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import ProductsPage from "./pages/ProductsCatalogPage";
 import ContactPage from "./pages/ContactPage";
+import NewArrivalsPage from "./pages/NewArrivalsPage";
+import DiscountsPage from "./pages/DiscountsPage";
+import PackagesPage from "./pages/PackagesPage";
 import AdminProductsPage from "./features/admin/pages/AdminProductsPage";
 import AdminLoginPage from "./features/admin/pages/AdminLoginPage";
 import AdminDashboardPage from "./features/admin/pages/AdminDashboardPage";
@@ -39,6 +42,9 @@ function App() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/new-arrivals" element={<NewArrivalsPage />} />
+          <Route path="/discounts" element={<DiscountsPage />} />
+          <Route path="/packages" element={<PackagesPage />} />
 
           {/* Admin Routes */}
           <Route path="/admin-login" element={<AdminLoginPage />} />

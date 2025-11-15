@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600&display=swap");
 
 :root {
   --primary-blue: #1a73e8;
@@ -14,8 +14,25 @@
 .products-page-wrapper {
   background: var(--light-bg);
   min-height: 100vh;
-  font-family: "Inter", sans-serif;
+  font-family: "Poppins", "Inter", sans-serif;
   padding-bottom: 60px;
+}
+
+.products-layout {
+  display: flex;
+  gap: 32px;
+  padding: 0 6vw 60px;
+}
+
+.category-sidebar {
+  min-width: 260px;
+  background: transparent;
+  border-right: 1px solid #eeeeee;
+}
+
+.products-content {
+  flex: 1;
+  min-width: 0;
 }
 
 .catalog-hero {
@@ -233,12 +250,31 @@
   gap: 20px;
 }
 
+.products-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
 @media (max-width: 1200px) {
   .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .search-toolbar {
     grid-template-columns: 180px 1fr 120px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .products-layout {
+    flex-direction: column;
+  }
+  .category-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #eeeeee;
+    height: auto !important;
+    position: static !important;
   }
 }
 
