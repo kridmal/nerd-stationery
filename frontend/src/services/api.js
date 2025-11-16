@@ -55,6 +55,16 @@ export const deleteProduct = async (id) => {
   }
 };
 
+export const getProductActivities = async (params = {}) => {
+  try {
+    const res = await API.get("/products/activity", { params });
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching product activities:", error);
+    return [];
+  }
+};
+
 // Â· Minimum Quantity API
 export const updateProductMinQuantity = async (id, minQuantity) => {
   try {

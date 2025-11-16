@@ -10,6 +10,7 @@ import NewArrivalsPage from "./pages/NewArrivalsPage";
 import DiscountsPage from "./pages/DiscountsPage";
 import PackagesPage from "./pages/PackagesPage";
 import AdminProductsPage from "./features/admin/pages/AdminProductsPage";
+import ProductActivityPage from "./features/admin/pages/ProductActivityPage";
 import AdminLoginPage from "./features/admin/pages/AdminLoginPage";
 import AdminDashboardPage from "./features/admin/pages/AdminDashboardPage";
 import CategoryManager from "./features/admin/pages/CategoryManager";
@@ -53,6 +54,7 @@ function App() {
           <Route path="/admin/categories" element={<CategoryManager />} />
           <Route path="/admin/manage-quantity" element={<ManageQuantityPage />} />
           <Route path="/admin/new-arrivals" element={<NewArrivalPage />} />
+          <Route path="/admin/products/activity" element={<ProductActivityPage />} />
         </Routes>
       </LayoutWrapper>
     </Router>

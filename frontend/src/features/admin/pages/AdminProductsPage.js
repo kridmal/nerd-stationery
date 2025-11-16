@@ -470,6 +470,9 @@ const AdminProductsPage = () => {
 
         <Button onClick={() => navigate("/admin/manage-quantity")}>Manage Quantity</Button>{" "}
         <Button onClick={() => navigate("/admin/new-arrivals")}>New Arrivals</Button>
+        <Button onClick={() => navigate("/admin/products/activity")}>
+          Activity Table
+        </Button>
 
         <div style={{ marginLeft: "auto", minWidth: "250px" }}>
           <AutoComplete

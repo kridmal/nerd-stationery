@@ -1,7 +1,12 @@
 import express from "express";
 import Product from "../models/Product.js";
 import authAdmin from "../middleware/authAdmin.js";
-import { createProduct, updateProduct } from "../controllers/productController.js";
+import {
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getProductActivities,
+} from "../controllers/productController.js";
 
 const router = express.Router();
 const allowedDiscountTypes = ["none", "percentage", "fixed"];
@@ -25,6 +30,9 @@ router.get("/", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Activity logs (admin only)
+router.get("/activity", authAdmin, getProductActivities);
 
 // Add Product (admin only)
 router.post("/", authAdmin, createProduct);
@@ -55,13 +63,6 @@ router.put("/:id/min-quantity", authAdmin, async (req, res) => {
 });
 
 // Delete Product (admin only)
-router.delete("/:id", authAdmin, async (req, res) => {
-  try {
-    await Product.findByIdAndDelete(req.params.id);
-    res.json({ message: "Product deleted" });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
+router.delete("/:id", authAdmin, deleteProduct);
 
 export default router;
