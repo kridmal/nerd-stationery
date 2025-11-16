@@ -93,6 +93,10 @@ const productSchema = new mongoose.Schema(
       type: variationSchema,
       default: null,
     },
+    images: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

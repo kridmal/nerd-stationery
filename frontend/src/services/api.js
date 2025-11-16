@@ -27,7 +27,12 @@ export const getProducts = async () => {
 
 export const addProduct = async (productData) => {
   try {
-    const res = await API.post("/products", productData);
+    const isFormData =
+      typeof FormData !== "undefined" && productData instanceof FormData;
+    const config = isFormData
+      ? { headers: { "Content-Type": "multipart/form-data" } }
+      : undefined;
+    const res = await API.post("/products", productData, config);
     return res.data;
   } catch (error) {
     console.error("Error adding product:", error);
@@ -37,7 +42,12 @@ export const addProduct = async (productData) => {
 
 export const updateProduct = async (id, productData) => {
   try {
-    const res = await API.put(`/products/${id}`, productData);
+    const isFormData =
+      typeof FormData !== "undefined" && productData instanceof FormData;
+    const config = isFormData
+      ? { headers: { "Content-Type": "multipart/form-data" } }
+      : undefined;
+    const res = await API.put(`/products/${id}`, productData, config);
     return res.data;
   } catch (error) {
     console.error("Error updating product:", error);

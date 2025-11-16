@@ -11,8 +11,11 @@ import {
   AutoComplete,
   Space,
   Popconfirm,
+  Upload,
+  Tag,
 } from "antd";
 import { Tooltip } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 import {
   getProducts,
   addProduct,
@@ -109,6 +112,9 @@ const AdminProductsPage = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [showVariation, setShowVariation] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [existingImages, setExistingImages] = useState([]);
+  const [newImageFiles, setNewImageFiles] = useState([]);
+  const [previewImage, setPreviewImage] = useState(null);
   const discountTypeWatch = normalizeDiscountType(Form.useWatch("discountType", form) || "none");
   const discountValueWatch = Form.useWatch("discountValue", form) || 0;
   const originalPriceWatch = Form.useWatch("originalPrice", form) || 0;
@@ -161,6 +167,7 @@ const AdminProductsPage = () => {
         shortDescription: editingProduct.shortDescription ?? "",
         discountType: normalizeDiscountType(editingProduct.discountType),
         discountValue: Number(editingProduct.discountValue ?? 0),
+        images: Array.isArray(editingProduct.images) ? editingProduct.images : [],
       };
 
       const cat = (categories || []).find(
@@ -190,6 +197,8 @@ const AdminProductsPage = () => {
         discountType: np.discountType || "none",
         discountValue: np.discountType === "none" ? 0 : np.discountValue,
       });
+      setExistingImages(np.images || []);
+      setNewImageFiles([]);
     } else {
       form.setFieldsValue({
         existingQuantity: 0,
@@ -198,6 +207,8 @@ const AdminProductsPage = () => {
         discountValue: 0,
       });
       setSubcategories([]);
+      setExistingImages([]);
+      setNewImageFiles([]);
     }
   }, [isModalOpen, editingProduct, categories, form]);
 
@@ -248,22 +259,51 @@ const AdminProductsPage = () => {
         discountValue: normalizedDiscountValue,
       };
 
+      const buildFormData = (data) => {
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+          if (value === undefined) return;
+          if (value === null) {
+            formData.append(key, "");
+            return;
+          }
+          if (typeof value === "object" && !(value instanceof File)) {
+            formData.append(key, JSON.stringify(value));
+            return;
+          }
+          formData.append(key, value);
+        });
+        formData.append(
+          "existingImages",
+          JSON.stringify(existingImages.filter(Boolean))
+        );
+        newImageFiles.forEach((file) => {
+          const actualFile = file?.originFileObj || file;
+          if (actualFile) {
+            formData.append("images", actualFile);
+          }
+        });
+        return formData;
+      };
+
       if (editingProduct) {
-        const productData = {
+        const payload = {
           ...base,
           itemCode: editingProduct.itemCode,
           addNewQuantity: Number(values.addNewQuantity || 0),
         };
-        await updateProduct(editingProduct._id, productData);
+        const formData = buildFormData(payload);
+        await updateProduct(editingProduct._id, formData);
         message.success("Product updated successfully!");
       } else {
-        const productData = {
+        const payload = {
           ...base,
           itemCode: values.itemCode,
           existingQuantity: 0,
           addNewQuantity: Number(values.addNewQuantity || 0),
         };
-        await addProduct(productData);
+        const formData = buildFormData(payload);
+        await addProduct(formData);
         message.success("Product added successfully!");
       }
 
@@ -272,6 +312,8 @@ const AdminProductsPage = () => {
       form.resetFields();
       setEditingProduct(null);
       setShowVariation(false);
+      setExistingImages([]);
+      setNewImageFiles([]);
     } catch (error) {
       const msg = error?.response?.data?.message || error.message || "Failed to save product.";
       message.error(msg);
@@ -303,6 +345,8 @@ const AdminProductsPage = () => {
     });
     setShowVariation(false);
     setSubcategories([]);
+    setExistingImages([]);
+    setNewImageFiles([]);
     setIsModalOpen(true);
   };
 
@@ -319,11 +363,22 @@ const AdminProductsPage = () => {
       shortDescription: record.shortDescription ?? "",
       discountType: normalizeDiscountType(record.discountType),
       discountValue: Number(record.discountValue ?? 0),
+      images: Array.isArray(record.images) ? record.images : [],
       _id: record._id,
     };
     setEditingProduct(np);
     setShowVariation(!!np.variations);
+    setExistingImages(np.images || []);
+    setNewImageFiles([]);
     setIsModalOpen(true);
+  };
+
+  const handleExistingImageRemove = (url) => {
+    setExistingImages((prev) => prev.filter((img) => img !== url));
+  };
+
+  const openImagePreview = (url) => {
+    if (url) setPreviewImage(url);
   };
 
   // ? Table Columns
@@ -406,6 +461,29 @@ const AdminProductsPage = () => {
     { title: "Category", dataIndex: "category", key: "category" },
     { title: "Subcategory", dataIndex: "subcategory", key: "subcategory" },
     { title: "Quantity", dataIndex: "quantity", key: "quantity" },
+    {
+      title: "Images",
+      dataIndex: "images",
+      key: "images",
+      render: (images) => {
+        if (!Array.isArray(images) || images.length === 0) {
+          return <span>-</span>;
+        }
+        return (
+          <Space direction="vertical" size={0}>
+            {images.map((url, idx) => (
+              <Button
+                type="link"
+                key={`${url}-${idx}`}
+                onClick={() => openImagePreview(url)}
+              >
+                {`img ${idx + 1}`}
+              </Button>
+            ))}
+          </Space>
+        );
+      },
+    },
     {
       title: "Variation",
       key: "variation",
@@ -512,6 +590,8 @@ const AdminProductsPage = () => {
           setEditingProduct(null);
           form.resetFields();
           setShowVariation(false);
+          setExistingImages([]);
+          setNewImageFiles([]);
         }}
         footer={null}
         destroyOnClose
@@ -623,6 +703,43 @@ const AdminProductsPage = () => {
               </Form.Item>
             </>
           )}
+
+          {existingImages.length > 0 && (
+            <Form.Item label="Existing Images">
+              <Space wrap size={[8, 8]}>
+                {existingImages.map((url, idx) => (
+                  <Tag
+                    key={`${url}-${idx}`}
+                    closable
+                    onClose={(e) => {
+                      e.preventDefault();
+                      handleExistingImageRemove(url);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <span onClick={() => openImagePreview(url)}>{`img ${idx + 1}`}</span>
+                  </Tag>
+                ))}
+              </Space>
+            </Form.Item>
+          )}
+
+          <Form.Item label="Upload Images">
+            <Upload
+              listType="text"
+              multiple
+              accept="image/*"
+              maxCount={10}
+              fileList={newImageFiles}
+              beforeUpload={() => false}
+              onChange={({ fileList }) => setNewImageFiles(fileList.slice(0, 10))}
+            >
+              <Button icon={<UploadOutlined />}>Select Images</Button>
+            </Upload>
+            <div style={{ fontSize: 12, color: "#888" }}>
+              Upload up to 10 images (max 5MB each). New uploads are added on top of retained images.
+            </div>
+          </Form.Item>
 
           <Form.Item
             name="discountType"
@@ -736,6 +853,21 @@ const AdminProductsPage = () => {
             </div>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        open={!!previewImage}
+        footer={null}
+        onCancel={() => setPreviewImage(null)}
+        centered
+      >
+        {previewImage && (
+          <img
+            src={previewImage}
+            alt="Product Preview"
+            style={{ width: "100%", borderRadius: 8 }}
+          />
+        )}
       </Modal>
     </div>
   );

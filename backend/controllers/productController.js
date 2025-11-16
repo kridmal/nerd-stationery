@@ -2,6 +2,7 @@ import Product from "../models/Product.js";
 import Activity from "../models/Activity.js";
 import User from "../models/User.js";
 import AdminAccount from "../models/Admin.js";
+import { uploadProductImages } from "../utils/s3Uploader.js";
 
 const allowedDiscountTypes = ["none", "percentage", "fixed"];
 
@@ -30,6 +31,7 @@ const TRACKED_PRODUCT_FIELDS = [
   "quantity",
   "minQuantity",
   "variations",
+  "images",
 ];
 
 const toPlainObject = (doc) => {
@@ -41,6 +43,27 @@ const toPlainObject = (doc) => {
     return JSON.parse(JSON.stringify(doc));
   }
   return null;
+};
+
+const parseJsonArray = (value, fallback = []) => {
+  if (!value) return Array.isArray(value) ? value : fallback;
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
+};
+
+const parseJsonValue = (value, fallback = null) => {
+  if (value == null) return fallback;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return fallback;
+  }
 };
 
 const valuesAreEqual = (a, b) => {
@@ -160,6 +183,7 @@ export const createProduct = async (req, res) => {
       addNewQuantity = 0,
       variations,
       shortDescription = "",
+      existingImages,
     } = req.body;
 
     const normalizedOriginalPrice = toNumber(
@@ -173,6 +197,10 @@ export const createProduct = async (req, res) => {
 
     const totalQuantity = toNumber(existingQuantity) + toNumber(addNewQuantity);
 
+    const retainedImages = parseJsonArray(existingImages, []);
+    const uploadedImages = await uploadProductImages(req.files);
+    const normalizedVariations = parseJsonValue(variations, null);
+
     const product = new Product({
       itemCode,
       name,
@@ -182,8 +210,9 @@ export const createProduct = async (req, res) => {
       discountType: normalizeDiscountType(discountType),
       discountValue: toNumber(discountValue),
       quantity: totalQuantity,
-      variations: variations || null,
+      variations: normalizedVariations,
       shortDescription,
+      images: [...retainedImages, ...uploadedImages],
     });
 
     const saved = await product.save();
@@ -212,6 +241,7 @@ export const updateProduct = async (req, res) => {
       addNewQuantity = 0,
       variations,
       shortDescription = "",
+      existingImages,
     } = req.body;
 
     const product = await Product.findById(req.params.id);
@@ -223,13 +253,18 @@ export const updateProduct = async (req, res) => {
     const newTotalQuantity =
       toNumber(product.quantity || 0) + toNumber(addNewQuantity || 0);
 
+    const retainedImages = parseJsonArray(existingImages, product.images || []);
+    const newUploadedImages = await uploadProductImages(req.files);
+    const normalizedVariations = parseJsonValue(variations, product.variations || null);
+
     if (itemCode) product.itemCode = itemCode;
     if (name) product.name = name;
     if (category) product.category = category;
     if (subcategory) product.subcategory = subcategory;
     if (shortDescription != null) product.shortDescription = shortDescription;
     product.quantity = newTotalQuantity;
-    product.variations = variations || null;
+    product.variations = normalizedVariations;
+    product.images = [...retainedImages, ...newUploadedImages];
 
     const effectiveOriginal =
       originalPrice != null ? originalPrice : unitPrice;

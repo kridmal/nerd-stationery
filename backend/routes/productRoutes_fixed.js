@@ -1,6 +1,7 @@
 import express from "express";
 import Product from "../models/Product.js";
 import authAdmin from "../middleware/authAdmin.js";
+import upload from "../middleware/upload.js";
 import {
   createProduct,
   updateProduct,
@@ -35,10 +36,10 @@ router.get("/", async (req, res) => {
 router.get("/activity", authAdmin, getProductActivities);
 
 // Add Product (admin only)
-router.post("/", authAdmin, createProduct);
+router.post("/", authAdmin, upload.array("images", 10), createProduct);
 
 // Update Product (admin only)
-router.put("/:id", authAdmin, updateProduct);
+router.put("/:id", authAdmin, upload.array("images", 10), updateProduct);
 
 // Update only minimum quantity (admin only)
 router.put("/:id/min-quantity", authAdmin, async (req, res) => {
