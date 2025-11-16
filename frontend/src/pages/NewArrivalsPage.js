@@ -2,11 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { CircularProgress } from "@mui/material";
 import api from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
-import {
-  buildProductCardData,
-  PLACEHOLDER_IMAGE,
-  toNumber,
-} from "../utils/productUtils";
+import { PLACEHOLDER_IMAGE, toNumber } from "../utils/productUtils";
 import "./ShowcasePages.css";
 
 const NEW_ARRIVALS_STORAGE_KEY = "newArrivals";
@@ -14,6 +10,9 @@ const NEW_ARRIVALS_STORAGE_KEY = "newArrivals";
 const buildArrivalCard = (entry, productIndex) => {
   const code = (entry.itemCode || "").toLowerCase();
   const matchedProduct = productIndex[code];
+  const matchedImages = Array.isArray(matchedProduct?.images)
+    ? matchedProduct.images.filter(Boolean)
+    : [];
   const finalPrice = toNumber(
     entry.finalPrice ??
       entry.unitPrice ??
@@ -33,9 +32,11 @@ const buildArrivalCard = (entry, productIndex) => {
     id: entry.id || entry.itemCode || entry.name,
     image:
       entry.image ||
+      matchedImages[0] ||
       matchedProduct?.imageUrl ||
       matchedProduct?.image ||
       PLACEHOLDER_IMAGE,
+    images: matchedImages,
     name: entry.name || matchedProduct?.name || "New Arrival",
     finalPrice,
     originalPrice,
@@ -130,6 +131,7 @@ function NewArrivalsPage() {
             <ProductCard
               key={item.id || item.name}
               image={item.image}
+              images={item.images}
               name={item.name}
               finalPrice={item.finalPrice}
               originalPrice={item.originalPrice}

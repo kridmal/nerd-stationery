@@ -140,6 +140,9 @@ function HomePage() {
           matchedProduct?.price ??
           finalPrice
       );
+      const matchedImages = Array.isArray(matchedProduct?.images)
+        ? matchedProduct.images.filter(Boolean)
+        : [];
 
       return {
         ...entry,
@@ -154,9 +157,11 @@ function HomePage() {
           "",
         image:
           entry.image ||
+          matchedImages[0] ||
           matchedProduct?.imageUrl ||
           matchedProduct?.image ||
           PLACEHOLDER_IMAGE,
+        images: matchedImages,
       };
     });
   }, [newArrivals, productIndex]);
@@ -332,6 +337,7 @@ function HomePage() {
                 <ProductCard
                   key={item.id || item.itemCode || item.name}
                   image={item.image}
+                  images={item.images}
                   name={item.name}
                   finalPrice={item.finalPrice}
                   originalPrice={item.originalPrice}

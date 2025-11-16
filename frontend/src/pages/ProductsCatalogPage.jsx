@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { getProducts, getCategories } from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
 import "./ProductsPage.css";
+import { PLACEHOLDER_IMAGE } from "../utils/productUtils";
 
 const toNumeric = (value) => {
   if (value == null || value === "") return 0;
@@ -17,6 +18,13 @@ const getFinalPrice = (product) =>
 
 const getOriginalPrice = (product) =>
   toNumeric(product.originalPrice ?? product.unitPrice ?? product.price ?? product.finalPrice ?? 0);
+
+const getPrimaryImage = (product) => {
+  if (Array.isArray(product?.images) && product.images.length > 0) {
+    return product.images[0];
+  }
+  return product?.imageUrl || product?.image || PLACEHOLDER_IMAGE;
+};
 
 const ProductsCatalogPage = () => {
   const [products, setProducts] = useState([]);
@@ -273,10 +281,12 @@ const ProductsCatalogPage = () => {
                 ? `${Math.round(p.discountValue)}% OFF`
                 : "SALE"
               : null;
+            const primaryImage = getPrimaryImage(p);
             return (
               <ProductCard
                 key={p._id}
-                image={p.imageUrl || p.image}
+                image={primaryImage}
+                images={Array.isArray(p.images) ? p.images : []}
                 name={p.name}
                 finalPrice={finalPrice}
                 originalPrice={originalPrice}

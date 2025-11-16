@@ -14,6 +14,15 @@ import { getProducts } from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
 import "./ProductsPage.css";
 
+/* ----------------------------------------------------------
+ 🔥 DEBUG: LOG ALL PRODUCTS ONCE
+---------------------------------------------------------- */
+const logProductsOnce = (products) => {
+  console.log("🟢 FULL PRODUCT PAYLOAD:", products);
+};
+
+/* ---------------------------------------------------------- */
+
 const normalizeText = (value, fallback = "Miscellaneous") => {
   if (value === 0) return "0";
   if (!value) return fallback;
@@ -54,6 +63,9 @@ const groupProductsByCategory = (products = []) => {
   }));
 };
 
+/* ----------------------------------------------------------
+    CATEGORY SIDEBAR  (UNCHANGED)
+---------------------------------------------------------- */
 const CategorySidebar = ({
   loading,
   categories,
@@ -188,7 +200,10 @@ const CategorySidebar = ({
                           py: 0.45,
                           borderRadius: 0,
                           alignItems: "center",
-                          "&:hover": { bgcolor: "transparent", color: "#111" },
+                          "&:hover": {
+                            bgcolor: "transparent",
+                            color: "#111",
+                          },
                         }}
                       >
                         <ListItemText
@@ -229,6 +244,9 @@ const CategorySidebar = ({
   );
 };
 
+/* ----------------------------------------------------------
+                 MAIN PRODUCT PAGE
+---------------------------------------------------------- */
 function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -241,9 +259,12 @@ function ProductsPage() {
       setLoadingProducts(true);
       try {
         const data = await getProducts();
-        const safeProducts = Array.isArray(data) ? data : [];
-        setProducts(safeProducts);
-        const grouped = groupProductsByCategory(safeProducts);
+        const safe = Array.isArray(data) ? data : [];
+
+        logProductsOnce(safe);
+
+        setProducts(safe);
+        const grouped = groupProductsByCategory(safe);
         setCategoryGroups(grouped);
         if (grouped.length > 0) {
           setOpenCategory(grouped[0].category);
@@ -260,73 +281,77 @@ function ProductsPage() {
     fetchData();
   }, []);
 
-  const handleCategoryClick = (categoryName) => {
-    console.log("Selected", categoryName);
-    setOpenCategory((prev) => (prev === categoryName ? null : categoryName));
-  };
-
-  const handleSubCategoryClick = (categoryName, subCategoryName) => {
-    console.log("Selected", categoryName, subCategoryName);
-  };
-
-  const handleToggleSubcategoryList = (categoryName) => {
-    setExpandedSubcategories((prev) => ({
-      ...prev,
-      [categoryName]: !prev[categoryName],
-    }));
-  };
-
+  /* ----------------------------------------------------------
+        🔥 FIX IMAGE LOGIC FOR S3 + UNSPLASH
+  ---------------------------------------------------------- */
   const productCards = useMemo(
     () =>
-      products.map((product) => (
-        <ProductCard
-          key={product._id || product.id || product.itemCode}
-          image={product.imageUrl || product.image}
-          name={product.name}
-          finalPrice={
-            product.finalPrice ??
-            product.originalPrice ??
-            product.unitPrice ??
-            product.price
-          }
-          originalPrice={
-            product.originalPrice ??
-            product.unitPrice ??
-            product.price ??
-            product.finalPrice
-          }
-          discountType={product.discountType}
-          discountValue={product.discountValue}
-          description={product.shortDescription || product.description}
-          price={product.price}
-        />
-      )),
+      products.map((product) => {
+        const resolvedImage =
+          Array.isArray(product.images) && product.images.length > 0
+            ? product.images[0]
+            : product.image || product.imageUrl || null;
+
+        return (
+          <ProductCard
+            key={product._id || product.id || product.itemCode}
+            image={resolvedImage}
+            images={Array.isArray(product.images) ? product.images : []}
+            name={product.name}
+            finalPrice={
+              product.finalPrice ??
+              product.originalPrice ??
+              product.unitPrice ??
+              product.price
+            }
+            originalPrice={
+              product.originalPrice ??
+              product.unitPrice ??
+              product.price ??
+              product.finalPrice
+            }
+            discountType={product.discountType}
+            discountValue={product.discountValue}
+            description={product.shortDescription || product.description}
+            price={product.price}
+          />
+        );
+      }),
     [products]
   );
 
+  /* ---------------------------------------------------------- */
   return (
     <div className="products-page-wrapper">
       <div className="catalog-hero">
         <h1>Our Products</h1>
         <p>
-          Browse curated stationery designed for creativity, productivity, and
-          modern workspaces.
+          Browse curated stationery designed for creativity, productivity,
+          and modern workspaces.
         </p>
       </div>
+
       <div className="products-layout">
         <CategorySidebar
           loading={loadingProducts}
           categories={categoryGroups}
           openCategory={openCategory}
           expandedSubcategories={expandedSubcategories}
-          onCategoryClick={handleCategoryClick}
-          onSubCategoryClick={handleSubCategoryClick}
-          onToggleSubcategoryList={handleToggleSubcategoryList}
+          onCategoryClick={setOpenCategory}
+          onSubCategoryClick={(c, s) => console.log("Selected", c, s)}
+          onToggleSubcategoryList={(categoryName) =>
+            setExpandedSubcategories((prev) => ({
+              ...prev,
+              [categoryName]: !prev[categoryName],
+            }))
+          }
         />
+
         <div className="products-content">
           <div className="grid-toolbar">
             <span className="product-count">{products.length} products</span>
           </div>
+
           {loadingProducts ? (
             <div className="products-loading">
               <Skeleton variant="rectangular" width="100%" height={200} />

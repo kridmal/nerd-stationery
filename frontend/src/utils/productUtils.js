@@ -10,9 +10,16 @@ export const toNumber = (value, fallback = 0) => {
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
+export const getPrimaryImage = (item) => {
+  if (Array.isArray(item?.images) && item.images.length > 0) {
+    return item.images[0];
+  }
+  return item?.imageUrl || item?.image || PLACEHOLDER_IMAGE;
+};
+
 export const buildProductCardData = (item) => ({
   key: item._id || item.itemCode || item.id || item.name,
-  image: item.imageUrl || item.image || PLACEHOLDER_IMAGE,
+  image: getPrimaryImage(item),
   name: item.name,
   finalPrice:
     item.finalPrice ?? item.originalPrice ?? item.unitPrice ?? item.price ?? 0,
@@ -22,6 +29,7 @@ export const buildProductCardData = (item) => ({
   discountValue: item.discountValue,
   description: item.shortDescription || item.description || "",
   price: item.price,
+  images: Array.isArray(item.images) ? item.images : [],
 });
 
 export const formatCurrency = (value, prefix = "Rs") =>
