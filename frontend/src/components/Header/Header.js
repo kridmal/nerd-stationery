@@ -20,6 +20,7 @@ function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const showQuickDetour = location.pathname === "/";
 
   const scrollOrNavigate = useCallback(
     (sectionId, stateKey) => {
@@ -34,8 +35,6 @@ function Header() {
     },
     [location.pathname, navigate]
   );
-
-  const showComboLayout = location.pathname !== "/products";
 
   const navItems = useMemo(
     () => [
@@ -119,9 +118,9 @@ function Header() {
       position="sticky"
       elevation={0}
       sx={{
-        backgroundColor: "#FFFFFF",
-        color: "#333333",
-        borderBottom: "1px solid rgba(0,0,0,0.05)",
+        backgroundColor: "#E0E0E0",
+        color: "#FFFFFF",
+        borderBottom: "1px solid rgba(255,255,255,0.25)",
         fontFamily: '"Inter","Poppins","Montserrat",sans-serif',
         zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
@@ -151,90 +150,32 @@ function Header() {
         <Box
           sx={{
             display: { xs: "none", md: "flex" },
-            alignItems: showComboLayout ? "stretch" : "center",
-            gap: showComboLayout ? 2 : 1,
+            alignItems: "center",
+            gap: 2,
           }}
         >
-          {navItems.map((item) =>
-            item.type === "combo" && showComboLayout ? (
-              <Box
-                key={item.label}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  gap: 0.4,
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: 2,
-                  border: "1px solid rgba(26,115,232,0.15)",
-                  boxShadow: "0 8px 20px rgba(26,115,232,0.08)",
-                  backgroundColor: "#fff",
-                  minWidth: 150,
-                }}
-              >
-                <Button
-                  onClick={() => handleNavClick(item)}
-                  sx={{
-                    color: "#333",
-                    textTransform: "none",
-                    fontWeight: 600,
-                    fontSize: "0.95rem",
-                    position: "relative",
-                    "&:hover": {
-                      color: "#1A73E8",
-                      "&::after": {
-                        width: "100%",
-                      },
-                    },
-                    "&::after": {
-                      content: '""',
-                      position: "absolute",
-                      left: 0,
-                      bottom: -6,
-                      height: 2,
-                      width: 0,
-                      backgroundColor: "#1A73E8",
-                      transition: "width 0.2s ease",
-                    },
-                  }}
-                >
-                  {item.label}
-                  {highlightBadge(item.badgeColor, item.badgeText)}
-                </Button>
-                {item.quickDetour && (
-                  <Button
-                    size="small"
-                    onClick={() => handleQuickDetour(item.quickDetour)}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: "0.7rem",
-                      color: "#1A73E8",
-                      fontWeight: 600,
-                      alignSelf: "center",
-                      px: 0,
-                      py: 0,
-                      minWidth: "auto",
-                    }}
-                  >
-                    {item.quickDetour.label}
-                  </Button>
-                )}
-              </Box>
-            ) : (
+          {navItems.map((item) => (
+            <Box
+              key={item.label}
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                gap: 0.3,
+              }}
+            >
               <Button
-                key={item.label}
                 component={RouterLink}
                 to={item.to}
                 sx={{
-                  color: "#333",
+                  color: "#3D3D3D",
                   textTransform: "none",
-                  mx: 1,
+                  mx: 0,
                   fontWeight: item.type === "combo" ? 600 : 500,
                   fontSize: "0.95rem",
                   position: "relative",
                   "&:hover": {
-                    color: "#1A73E8",
+                    color: "#820035",
                     "&::after": {
                       width: "100%",
                     },
@@ -246,7 +187,7 @@ function Header() {
                     bottom: -6,
                     height: 2,
                     width: 0,
-                    backgroundColor: "#1A73E8",
+                    backgroundColor: "#820035",
                     transition: "width 0.2s ease",
                   },
                 }}
@@ -255,14 +196,30 @@ function Header() {
                 {item.type !== "link" &&
                   highlightBadge(item.badgeColor, item.badgeText)}
               </Button>
-            )
-          )}
+              {item.quickDetour && showQuickDetour && (
+                <Button
+                  size="small"
+                  onClick={() => handleQuickDetour(item.quickDetour)}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "0.7rem",
+                    color: "#820035",
+                    p: 0,
+                    minWidth: "auto",
+                    fontWeight: 600,
+                  }}
+                >
+                  {item.quickDetour.label}
+                </Button>
+              )}
+            </Box>
+          ))}
         </Box>
 
         <IconButton
           aria-label="open navigation menu"
           onClick={() => setMobileOpen(true)}
-          sx={{ display: { xs: "inline-flex", md: "none" }, color: "#333" }}
+          sx={{ display: { xs: "inline-flex", md: "none" }, color: "#3D3D3D" }}
         >
           <MenuIcon />
         </IconButton>
@@ -272,7 +229,7 @@ function Header() {
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
           PaperProps={{
-            sx: { width: 280, backgroundColor: "#FFFFFF", paddingTop: 2 },
+            sx: { width: 280, backgroundColor: "#E0E0E0", paddingTop: 2, color: "#3D3D3D" },
           }}
         >
           <Box
@@ -284,8 +241,10 @@ function Header() {
               pb: 1,
             }}
           >
-            <Typography fontWeight={600}>Menu</Typography>
-            <IconButton onClick={() => setMobileOpen(false)}>
+            <Typography fontWeight={600} color="#3D3D3D">
+              Menu
+            </Typography>
+            <IconButton onClick={() => setMobileOpen(false)} sx={{ color: "#3D3D3D" }}>
               <CloseIcon />
             </IconButton>
           </Box>
@@ -298,29 +257,31 @@ function Header() {
                 sx={{
                   mb: 1,
                   borderRadius: 2,
-                  border:
-                    item.type === "combo" && showComboLayout
-                      ? "1px solid rgba(26,115,232,0.2)"
-                      : "1px solid transparent",
-                  boxShadow:
-                    item.type === "combo" && showComboLayout
-                      ? "0 8px 18px rgba(26,115,232,0.12)"
-                      : "none",
+                  border: "1px solid rgba(7,27,63,0.12)",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                   alignItems: "flex-start",
                   flexDirection: "column",
                   gap: 0.5,
+                  color: "#3D3D3D",
                 }}
               >
                 <ListItemText
                   primary={
-                    <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                    <span
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                      }}
+                    >
                       <span>{item.label}</span>
                       {item.type !== "link" &&
                         highlightBadge(item.badgeColor, item.badgeText)}
                     </span>
                   }
                 />
-                {item.quickDetour && showComboLayout && (
+                {item.quickDetour && showQuickDetour && (
                   <Button
                     size="small"
                     onClick={(event) => {
@@ -330,11 +291,11 @@ function Header() {
                     sx={{
                       textTransform: "none",
                       fontSize: "0.75rem",
-                      color: "#1A73E8",
+                      color: "#820035",
                       p: 0,
                       minWidth: "auto",
                       fontWeight: 600,
-                      alignSelf: "center",
+                      alignSelf: "flex-start",
                     }}
                   >
                     {item.quickDetour.label}

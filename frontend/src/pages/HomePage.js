@@ -310,7 +310,7 @@ function HomePage() {
         ref={newArrivalsRef}
       >
         <h2 className="section-heading">New Arrivals</h2>
-        <p>
+        <p className="section-description section-description--light">
           Fresh drops and limited-run favorites handpicked by the Nerd Stationery team.
           Discover what just landed before it sells out.
         </p>
@@ -319,7 +319,7 @@ function HomePage() {
             <CircularProgress />
           </div>
         ) : preparedArrivals.length === 0 ? (
-          <p style={{ marginTop: 24, color: "#666" }}>
+          <p className="section-empty section-empty--light">
             No new arrivals have been published yet. Please check back soon!
           </p>
         ) : (
@@ -370,13 +370,15 @@ function HomePage() {
         <h2 className="section-heading section-heading--discount">
           Special Discounts
         </h2>
-        <p style={{ color: "#666", marginBottom: 24 }}>{discountTitle}</p>
+        <p className="section-description section-description--accent">
+          {discountTitle}
+        </p>
         {loadingProducts && discountedCards.length === 0 ? (
           <div style={{ marginTop: 40 }}>
             <CircularProgress />
           </div>
         ) : discountedCards.length === 0 ? (
-          <p style={{ color: "#888" }}>
+          <p className="section-empty section-empty--accent">
             Currently there are no discounted items. Keep an eye out for future offers!
           </p>
         ) : (

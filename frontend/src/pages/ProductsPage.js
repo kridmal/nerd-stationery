@@ -8,7 +8,6 @@ import {
   Typography,
   Skeleton,
   Stack,
-  Divider,
 } from "@mui/material";
 import { getProducts } from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
@@ -70,10 +69,11 @@ const CategorySidebar = ({
   loading,
   categories,
   openCategory,
-  expandedSubcategories,
   onCategoryClick,
   onSubCategoryClick,
-  onToggleSubcategoryList,
+  priceBounds,
+  currentPrice,
+  onPriceChange,
 }) => {
   const skeletonItems = Array.from({ length: 5 });
 
@@ -90,19 +90,47 @@ const CategorySidebar = ({
         overflowY: "auto",
       }}
     >
-      <Typography
-        variant="h6"
-        sx={{
-          px: 2.5,
-          mb: 1.5,
-          fontWeight: 600,
-          fontSize: "18px",
-          color: "#111",
-        }}
-      >
-        Browse by Category
-      </Typography>
-      <Divider sx={{ mb: 2 }} />
+      <div className="price-range-block">
+        <Typography className="price-range-title">Price Range</Typography>
+        <div className="price-inputs">
+          <input
+            type="number"
+            value={currentPrice[0]}
+            onChange={(e) =>
+              onPriceChange([
+                Number(e.target.value) || priceBounds.min,
+                currentPrice[1],
+              ])
+            }
+            min={priceBounds.min}
+            max={currentPrice[1]}
+          />
+          <span className="price-separator">to</span>
+          <input
+            type="number"
+            value={currentPrice[1]}
+            onChange={(e) =>
+              onPriceChange([
+                currentPrice[0],
+                Number(e.target.value) || priceBounds.max,
+              ])
+            }
+            min={currentPrice[0]}
+            max={priceBounds.max}
+          />
+        </div>
+        <input
+          type="range"
+          min={priceBounds.min}
+          max={priceBounds.max}
+          value={currentPrice[1]}
+          onChange={(e) =>
+            onPriceChange([currentPrice[0], Number(e.target.value)])
+          }
+        />
+      </div>
+
+      <Typography className="category-heading">Product Category</Typography>
 
       {loading ? (
         <Stack spacing={1.5} sx={{ px: 2.5 }}>
@@ -123,116 +151,48 @@ const CategorySidebar = ({
           ))}
         </Stack>
       ) : categories.length === 0 ? (
-        <Typography sx={{ color: "#666", fontSize: 14, px: 2.5 }}>
+        <Typography sx={{ color: "#555", fontSize: 14, px: 2.5 }}>
           No categories found.
         </Typography>
       ) : (
-        <List disablePadding>
+        <List disablePadding className="category-list">
           {categories.map(({ category, subcategories }) => {
             const isOpen = openCategory === category;
-            const showAll = expandedSubcategories[category] || false;
-            const visibleSubcategories = showAll
-              ? subcategories
-              : subcategories.slice(0, 5);
-            const hasMore = subcategories.length > 5;
 
             return (
               <React.Fragment key={category}>
                 <ListItemButton
+                  className={`category-item ${isOpen ? "active" : ""}`}
                   onClick={() => onCategoryClick(category)}
-                  sx={{
-                    px: 2.5,
-                    py: 1,
-                    borderRadius: 0,
-                    color: "#222",
-                    fontWeight: 600,
-                    fontSize: "17px",
-                    "&:hover": { color: "#111" },
-                    ...(isOpen && {
-                      color: "#4f46e5",
-                    }),
-                  }}
                 >
-                  <Typography
-                    component="span"
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      fontSize: "17px",
+                  <ListItemText
+                    primary={category}
+                    primaryTypographyProps={{
                       fontWeight: 600,
-                      flexGrow: 1,
+                      fontSize: "16px",
                     }}
-                  >
-                    {category}
-                  </Typography>
-                  <Typography
-                    component="span"
-                    sx={{
-                      fontSize: "18px",
-                      fontWeight: 600,
-                      color: "#4f46e5",
-                      transition: "transform 0.2s ease",
-                      transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
-                    }}
-                  >
-                    &gt;
-                  </Typography>
+                  />
+                  <span className="category-arrow">{isOpen ? "˅" : ">"}</span>
                 </ListItemButton>
 
                 <Collapse in={isOpen} timeout="auto" unmountOnExit>
-                  <Box
-                    sx={{
-                      ml: 4,
-                      pl: 1.5,
-                      borderLeft: "1px solid rgba(79,70,229,0.15)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 0.2,
-                    }}
-                  >
-                    {visibleSubcategories.map((subCategory) => (
+                  <Box className="subcategory-wrapper">
+                    {subcategories.map((subCategory) => (
                       <ListItemButton
                         key={`${category}-${subCategory}`}
+                        className="subcategory-item"
                         onClick={() => onSubCategoryClick(category, subCategory)}
-                        sx={{
-                          pl: 2.5,
-                          pr: 2,
-                          py: 0.45,
-                          borderRadius: 0,
-                          alignItems: "center",
-                          "&:hover": {
-                            bgcolor: "transparent",
-                            color: "#111",
-                          },
-                        }}
                       >
                         <ListItemText
                           primary={subCategory}
                           primaryTypographyProps={{
-                            fontFamily: '"Poppins","Inter",sans-serif',
-                            fontSize: "14px",
+                            fontSize: "13px",
                             fontWeight: 400,
                             color: "#555",
                           }}
                         />
                       </ListItemButton>
                     ))}
-                    {hasMore && (
-                      <ListItemButton
-                        onClick={() => onToggleSubcategoryList(category)}
-                        sx={{ pl: 2.5, pr: 2, py: 0.4 }}
-                      >
-                        <ListItemText
-                          primary={showAll ? "Less..." : "More..."}
-                          primaryTypographyProps={{
-                            fontFamily: '"Poppins","Inter",sans-serif',
-                            fontSize: "13px",
-                            fontWeight: 500,
-                            color: "#4f46e5",
-                          }}
-                        />
-                      </ListItemButton>
-                    )}
                   </Box>
                 </Collapse>
               </React.Fragment>
@@ -252,7 +212,8 @@ function ProductsPage() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [categoryGroups, setCategoryGroups] = useState([]);
   const [openCategory, setOpenCategory] = useState(null);
-  const [expandedSubcategories, setExpandedSubcategories] = useState({});
+  const [priceBounds, setPriceBounds] = useState({ min: 0, max: 0 });
+  const [priceRange, setPriceRange] = useState([0, 0]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -336,15 +297,11 @@ function ProductsPage() {
           loading={loadingProducts}
           categories={categoryGroups}
           openCategory={openCategory}
-          expandedSubcategories={expandedSubcategories}
           onCategoryClick={setOpenCategory}
           onSubCategoryClick={(c, s) => console.log("Selected", c, s)}
-          onToggleSubcategoryList={(categoryName) =>
-            setExpandedSubcategories((prev) => ({
-              ...prev,
-              [categoryName]: !prev[categoryName],
-            }))
-          }
+          priceBounds={priceBounds}
+          currentPrice={priceRange}
+          onPriceChange={setPriceRange}
         />
 
         <div className="products-content">
@@ -366,3 +323,10 @@ function ProductsPage() {
 }
 
 export default ProductsPage;
+        const prices = safe.map(
+          (item) =>
+            item.finalPrice ?? item.originalPrice ?? item.unitPrice ?? item.price ?? 0
+        );
+        const minPrice = prices.length ? Math.min(...prices) : 0;
+        const maxPrice = prices.length ? Math.max(...prices) : 0;
+        setPriceRange([minPrice, maxPrice]);

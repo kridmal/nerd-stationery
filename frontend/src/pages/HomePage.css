@@ -32,11 +32,21 @@
 }
 
 .new-arrivals {
-  background: #ffffff;
+  background: #071b3f;
   border-radius: 24px;
   margin: 48px 5vw;
   padding: 48px 5vw;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 20px 40px rgba(7, 27, 63, 0.25);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.discounts {
+  background: #7a0034;
+  border-radius: 24px;
+  margin: 48px 5vw;
+  padding: 48px 5vw;
+  box-shadow: 0 20px 40px rgba(122, 0, 52, 0.25);
+  color: rgba(255, 235, 244, 0.92);
 }
 
 .section-heading {
@@ -59,11 +69,11 @@
 }
 
 .section-heading--discount {
-  color: #e53935;
+  color: #fef1f6;
 }
 
 .section-heading--discount::after {
-  background: #e53935;
+  background: #ffb7d2;
 }
 
 .section-heading--packages {
@@ -72,6 +82,35 @@
 
 .section-heading--packages::after {
   background: #1a73e8;
+}
+
+.section-description {
+  color: #4a4a4a;
+  max-width: 680px;
+  line-height: 1.6;
+  margin-bottom: 24px;
+  font-size: 1rem;
+}
+
+.section-description--light {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.section-description--accent {
+  color: rgba(255, 235, 244, 0.85);
+}
+
+.section-empty {
+  font-weight: 500;
+  margin-top: 24px;
+}
+
+.section-empty--light {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.section-empty--accent {
+  color: rgba(255, 240, 244, 0.85);
 }
 
 .product-grid {
@@ -123,14 +162,6 @@
   margin-top: 24px;
 }
 
-.discounts {
-  background: #ffffff;
-  border-radius: 24px;
-  margin: 48px 5vw 60px;
-  padding: 48px 5vw;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-}
-
 .packages {
   background: #ffffff;
   border-radius: 24px;
@@ -151,6 +182,37 @@
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
   background: #fff !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.new-arrivals .section-heading,
+.new-arrivals .section-heading::after,
+.new-arrivals p,
+.new-arrivals .section-description,
+.new-arrivals .section-empty {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.new-arrivals .section-heading::after {
+  background: #ffc107;
+}
+
+.discounts .section-heading,
+.discounts .section-heading::after,
+.discounts p,
+.discounts .section-description,
+.discounts .section-empty {
+  color: rgba(255, 240, 244, 0.95);
+}
+
+.discounts .section-heading::after {
+  background: #ffb7d2;
+}
+
+.new-arrivals .product-slider__arrow,
+.discounts .product-slider__arrow {
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff;
 }
 
 .product-slider__items {
