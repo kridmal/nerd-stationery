@@ -27,13 +27,13 @@ jobs:
         host: ${{ secrets.AWS_HOST }}
         username: ${{ secrets.AWS_USER }}
         key: ${{ secrets.AWS_KEY }}
-        command_timeout: 15m   # ⬅⬅⬅ ADD THIS LINE
+        command_timeout: 30m   # Safe
         script: |
           cd ~/nerd-stationery/backend
-          npm install
+          npm ci --silent
           pm2 restart nerd-backend || pm2 start server.js --name nerd-backend
 
           cd ~/nerd-stationery/frontend
-          npm install
-          npm run build
+          npm ci --silent
+          npm run build --silent
           pm2 restart nerd-frontend || pm2 serve dist 3000 --spa --name nerd-frontend
