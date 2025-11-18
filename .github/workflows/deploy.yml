@@ -27,6 +27,7 @@ jobs:
         host: ${{ secrets.AWS_HOST }}
         username: ${{ secrets.AWS_USER }}
         key: ${{ secrets.AWS_KEY }}
+        command_timeout: 15m   # ⬅⬅⬅ ADD THIS LINE
         script: |
           cd ~/nerd-stationery/backend
           npm install
