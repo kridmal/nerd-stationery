@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  Button,
   IconButton,
   Stack,
   Chip,
@@ -17,6 +18,9 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import RemoveIcon from "@mui/icons-material/Remove";
+import AddIcon from "@mui/icons-material/Add";
 import { PLACEHOLDER_IMAGE } from "../../utils/productUtils";
 
 const toNumber = (value) => {
@@ -90,14 +94,42 @@ const ProductCard = ({
   }, [sanitizedImages, safeCardImage]);
 
   const [detailOpen, setDetailOpen] = useState(false);
-  const [activeImage, setActiveImage] = useState(galleryImages[0]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    setActiveImage(galleryImages[0]);
+    setActiveIndex(0);
   }, [galleryImages, detailOpen]);
 
-  const shortText = shortDescription ?? description ?? "";
+  useEffect(() => {
+    if (!detailOpen) {
+      setQuantity(1);
+    }
+  }, [detailOpen]);
+
+  const activeImage = galleryImages[activeIndex] || safeCardImage;
+  const previewImages = useMemo(
+    () =>
+      galleryImages
+        .slice(0, 4)
+        .map((img, idx) => ({ img, idx })),
+    [galleryImages]
+  );
+
+  const shortText =
+    typeof shortDescription === "string" && shortDescription.trim().length > 0
+      ? shortDescription
+      : typeof description === "string"
+      ? description
+      : "";
   const handleClose = () => setDetailOpen(false);
+  const handleQuickView = (event) => {
+    if (event) event.stopPropagation();
+    setDetailOpen(true);
+  };
+  const handleQuantityChange = (delta) => {
+    setQuantity((prev) => Math.max(1, prev + delta));
+  };
 
   return (
     <>
@@ -108,7 +140,7 @@ const ProductCard = ({
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
           transition: "transform 0.2s ease, box-shadow 0.2s ease",
           backgroundColor: "#fff",
-          cursor: "pointer",
+          cursor: "default",
           position: "relative",
           "&:hover": {
             transform: "scale(1.03)",
@@ -119,7 +151,6 @@ const ProductCard = ({
             transform: "translate(-50%, 0)",
           },
         }}
-        onClick={() => setDetailOpen(true)}
       >
         <Box sx={{ position: "relative" }}>
           <CardMedia
@@ -160,10 +191,9 @@ const ProductCard = ({
               display: "flex",
               gap: 1,
               opacity: 0,
-              pointerEvents: "none",
+              pointerEvents: "auto",
               transition: "all 0.2s ease",
             }}
-            onClick={(e) => e.stopPropagation()}
           >
             <Tooltip title="Add to cart" arrow>
               <IconButton
@@ -174,6 +204,18 @@ const ProductCard = ({
                 }}
               >
                 <AddShoppingCartIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Quick view" arrow>
+              <IconButton
+                color="primary"
+                onClick={handleQuickView}
+                sx={{
+                  backgroundColor: "white",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                }}
+              >
+                <VisibilityOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Add to wishlist" arrow>
@@ -292,20 +334,20 @@ const ProductCard = ({
                   maxHeight: 320,
                 }}
               />
-              {galleryImages.length > 1 && (
+              {previewImages.length > 0 && (
                 <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
-                  {galleryImages.map((img, idx) => (
+                  {previewImages.map(({ img, idx }) => (
                     <Box
                       key={`${img}-${idx}`}
                       component="button"
                       type="button"
-                      onClick={() => setActiveImage(img)}
+                      onClick={() => setActiveIndex(idx)}
                       sx={{
                         border: "none",
                         padding: 0,
                         background: "transparent",
                         cursor: "pointer",
-                        opacity: img === activeImage ? 1 : 0.7,
+                        opacity: idx === activeIndex ? 1 : 0.7,
                       }}
                     >
                       <Box
@@ -318,7 +360,7 @@ const ProductCard = ({
                           borderRadius: 1,
                           objectFit: "cover",
                           border:
-                            img === activeImage
+                            idx === activeIndex
                               ? "2px solid #1A73E8"
                               : "1px solid #ddd",
                         }}
@@ -365,6 +407,12 @@ const ProductCard = ({
                     {formatCurrency(baseOriginal)}
                   </Typography>
                 )}
+                {hasDiscount && (
+                  <Typography variant="body2" sx={{ color: "#1A73E8", mt: 0.5 }}>
+                    You save {formatCurrency(diff)} (
+                    {Math.round(percentValue)}% off)
+                  </Typography>
+                )}
               </Box>
               <Divider />
               <Box>
@@ -375,6 +423,52 @@ const ProductCard = ({
                   {shortText || "No description available for this item."}
                 </Typography>
               </Box>
+              <Divider />
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                  Quantity
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <IconButton
+                    aria-label="Decrease quantity"
+                    onClick={() => handleQuantityChange(-1)}
+                    disabled={quantity === 1}
+                    sx={{ border: "1px solid #ddd" }}
+                  >
+                    <RemoveIcon />
+                  </IconButton>
+                  <Typography variant="h6" sx={{ minWidth: 32, textAlign: "center" }}>
+                    {quantity}
+                  </Typography>
+                  <IconButton
+                    aria-label="Increase quantity"
+                    onClick={() => handleQuantityChange(1)}
+                    sx={{ border: "1px solid #ddd" }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Stack>
+              </Box>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                sx={{ mt: 1 }}
+              >
+                <Button
+                  variant="contained"
+                  startIcon={<AddShoppingCartIcon />}
+                  sx={{ flex: 1 }}
+                >
+                  Add to cart
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<FavoriteBorderIcon />}
+                  sx={{ flex: 1 }}
+                >
+                  Add to wishlist
+                </Button>
+              </Stack>
             </Box>
           </Stack>
         </DialogContent>

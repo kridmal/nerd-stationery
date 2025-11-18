@@ -17,20 +17,28 @@ export const getPrimaryImage = (item) => {
   return item?.imageUrl || item?.image || PLACEHOLDER_IMAGE;
 };
 
-export const buildProductCardData = (item) => ({
-  key: item._id || item.itemCode || item.id || item.name,
-  image: getPrimaryImage(item),
-  name: item.name,
-  finalPrice:
-    item.finalPrice ?? item.originalPrice ?? item.unitPrice ?? item.price ?? 0,
-  originalPrice:
-    item.originalPrice ?? item.unitPrice ?? item.price ?? item.finalPrice ?? 0,
-  discountType: item.discountType,
-  discountValue: item.discountValue,
-  description: item.shortDescription || item.description || "",
-  price: item.price,
-  images: Array.isArray(item.images) ? item.images : [],
-});
+export const buildProductCardData = (item) => {
+  const fallbackDescription =
+    typeof item.description === "string" ? item.description : "";
+  const shortDescription =
+    item.shortDescription || fallbackDescription || "";
+
+  return {
+    key: item._id || item.itemCode || item.id || item.name,
+    image: getPrimaryImage(item),
+    name: item.name,
+    finalPrice:
+      item.finalPrice ?? item.originalPrice ?? item.unitPrice ?? item.price ?? 0,
+    originalPrice:
+      item.originalPrice ?? item.unitPrice ?? item.price ?? item.finalPrice ?? 0,
+    discountType: item.discountType,
+    discountValue: item.discountValue,
+    shortDescription,
+    description: fallbackDescription || shortDescription,
+    price: item.price,
+    images: Array.isArray(item.images) ? item.images : [],
+  };
+};
 
 export const formatCurrency = (value, prefix = "Rs") =>
   `${prefix} ${Number(value || 0).toFixed(2)}`;

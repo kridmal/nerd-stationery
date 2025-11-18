@@ -28,6 +28,14 @@ const buildArrivalCard = (entry, productIndex) => {
       finalPrice
   );
 
+  const shortDescription =
+    entry.shortDescription ||
+    matchedProduct?.shortDescription ||
+    matchedProduct?.description ||
+    "";
+  const longDescription =
+    entry.description || matchedProduct?.description || shortDescription;
+
   return {
     id: entry.id || entry.itemCode || entry.name,
     image:
@@ -42,11 +50,8 @@ const buildArrivalCard = (entry, productIndex) => {
     originalPrice,
     discountType: entry.discountType ?? matchedProduct?.discountType,
     discountValue: entry.discountValue ?? matchedProduct?.discountValue,
-    description:
-      entry.shortDescription ||
-      matchedProduct?.shortDescription ||
-      matchedProduct?.description ||
-      "",
+    shortDescription,
+    description: longDescription,
     price: entry.price ?? matchedProduct?.price,
   };
 };
@@ -137,6 +142,7 @@ function NewArrivalsPage() {
               originalPrice={item.originalPrice}
               discountType={item.discountType}
               discountValue={item.discountValue}
+              shortDescription={item.shortDescription}
               description={item.description}
               price={item.price}
               badgeLabel="NEW"

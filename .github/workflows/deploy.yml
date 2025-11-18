@@ -1,0 +1,38 @@
+name: Deploy Nerd App
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Upload Code to EC2
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.AWS_HOST }}
+        username: ${{ secrets.AWS_USER }}
+        key: ${{ secrets.AWS_KEY }}
+        source: "."
+        target: "~/nerd-stationery"
+
+    - name: Restart Backend & Frontend on EC2
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.AWS_HOST }}
+        username: ${{ secrets.AWS_USER }}
+        key: ${{ secrets.AWS_KEY }}
+        script: |
+          cd ~/nerd-stationery/backend
+          npm install
+          pm2 restart nerd-backend || pm2 start server.js --name nerd-backend
+
+          cd ~/nerd-stationery/frontend
+          npm install
+          npm run build
+          pm2 restart nerd-frontend || pm2 serve dist 3000 --spa --name nerd-frontend

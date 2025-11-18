@@ -143,6 +143,13 @@ function HomePage() {
       const matchedImages = Array.isArray(matchedProduct?.images)
         ? matchedProduct.images.filter(Boolean)
         : [];
+      const shortDescription =
+        entry.shortDescription ||
+        matchedProduct?.shortDescription ||
+        matchedProduct?.description ||
+        "";
+      const longDescription =
+        entry.description || matchedProduct?.description || shortDescription;
 
       return {
         ...entry,
@@ -150,11 +157,8 @@ function HomePage() {
         originalPrice,
         discountType: entry.discountType ?? matchedProduct?.discountType,
         discountValue: entry.discountValue ?? matchedProduct?.discountValue,
-        description:
-          entry.shortDescription ||
-          matchedProduct?.shortDescription ||
-          matchedProduct?.description ||
-          "",
+        shortDescription,
+        description: longDescription,
         image:
           entry.image ||
           matchedImages[0] ||
@@ -343,6 +347,7 @@ function HomePage() {
                   originalPrice={item.originalPrice}
                   discountType={item.discountType}
                   discountValue={item.discountValue}
+                  shortDescription={item.shortDescription}
                   description={item.description}
                   price={item.price}
                   badgeLabel="NEW"
