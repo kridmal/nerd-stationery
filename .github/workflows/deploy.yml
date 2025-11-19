@@ -13,13 +13,12 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # STEP 2 — Setup Node.js for frontend build
+    # STEP 2 — Build Frontend inside GitHub
     - name: Setup Node
       uses: actions/setup-node@v3
       with:
         node-version: 18
 
-    # STEP 3 — Install & Build Frontend inside GitHub
     - name: Install Frontend Dependencies
       working-directory: frontend
       run: npm install --legacy-peer-deps
@@ -28,41 +27,43 @@ jobs:
       working-directory: frontend
       run: npm run build
 
-    # STEP 4 — Upload only needed files to EC2 (super fast)
-    - name: Upload Code to EC2
+    # STEP 3 — ZIP entire project EXCEPT node_modules
+    - name: Create ZIP for EC2
+      run: |
+        zip -r nerd.zip . \
+        -x "*/node_modules/*" \
+        -x "*/.git/*" \
+        -x "*.pem" \
+        -x "*.env"
+
+    # STEP 4 — Upload ZIP to EC2
+    - name: Upload ZIP to EC2
       uses: appleboy/scp-action@v0.1.4
       with:
         host: ${{ secrets.AWS_HOST }}
         username: ${{ secrets.AWS_USER }}
         key: ${{ secrets.AWS_KEY }}
-        source: "./"
-        target: "~/nerd-stationery"
-        timeout: 120s
-        rsync: true
-        exclude: |
-          **/node_modules/**
-          .git/**
-          .github/**
-          frontend/node_modules/**
-          backend/node_modules/**
-          **/*.log
+        source: "nerd.zip"
+        target: "~/"
 
-    # STEP 5 — Restart backend + serve frontend
-    - name: Restart Backend & Frontend on EC2
+    # STEP 5 — Unzip and Deploy on EC2
+    - name: Unzip & Deploy on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.AWS_HOST }}
         username: ${{ secrets.AWS_USER }}
         key: ${{ secrets.AWS_KEY }}
-        timeout: 900s
-        command_timeout: 900s
         script: |
-          echo "========== BACKEND =========="
+          rm -rf ~/nerd-stationery
+          mkdir ~/nerd-stationery
+          unzip -o ~/nerd.zip -d ~/nerd-stationery
+
+          # BACKEND INSTALL
           cd ~/nerd-stationery/backend
           npm install --legacy-peer-deps
           pm2 restart nerd-backend || pm2 start server.js --name nerd-backend
 
-          echo "========== FRONTEND =========="
+          # FRONTEND SERVE
           cd ~/nerd-stationery/frontend
-          pm2 delete nerd-frontend || true
+          pm2 stop nerd-frontend || true
           pm2 serve dist 3000 --spa --name nerd-frontend
