@@ -9,9 +9,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # STEP 1 — Checkout Code
     - name: Checkout Code
       uses: actions/checkout@v3
 
+    # STEP 2 — Install Node for Frontend Build
+    - name: Setup Node
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    # STEP 3 — Install & Build FRONTEND inside GitHub
+    - name: Install Frontend Dependencies
+      working-directory: frontend
+      run: npm install --legacy-peer-deps
+
+    - name: Build Frontend
+      working-directory: frontend
+      run: npm run build
+
+    # STEP 4 — Upload Entire Project (including dist/) to EC2
     - name: Upload Code to EC2
       uses: appleboy/scp-action@v0.1.4
       with:
@@ -20,23 +37,24 @@ jobs:
         key: ${{ secrets.AWS_KEY }}
         source: "."
         target: "~/nerd-stationery"
-        timeout: 120s             # 2 minutes
-        command_timeout: 20m      # For large uploads (React build files)
+        timeout: 120s
 
+    # STEP 5 — Restart Backend & Serve Frontend on EC2
     - name: Restart Backend & Frontend on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.AWS_HOST }}
         username: ${{ secrets.AWS_USER }}
         key: ${{ secrets.AWS_KEY }}
+        timeout: 900s
+        command_timeout: 900s
         script: |
+          # BACKEND DEPLOY
           cd ~/nerd-stationery/backend
           npm install --legacy-peer-deps
           pm2 restart nerd-backend || pm2 start server.js --name nerd-backend
 
+          # FRONTEND DEPLOY
           cd ~/nerd-stationery/frontend
-          npm install --legacy-peer-deps
-          npm run build
-          pm2 restart nerd-frontend || pm2 serve dist 3000 --spa --name nerd-frontend
-        timeout: 900s              # 15 minutes
-        command_timeout: 900s
+          pm2 stop nerd-frontend || true
+          pm2 serve dist 3000 --spa --name nerd-frontend
