@@ -13,10 +13,8 @@ yarn-error.log*
 
 # Build output
 dist/
-build/
 
 # Misc
 .DS_Store
 .idea/
 .vscode/
-
