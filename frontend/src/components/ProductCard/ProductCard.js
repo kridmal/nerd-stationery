@@ -80,9 +80,13 @@ const ProductCard = ({
       ? `Rs ${fixedValue.toFixed(2)} OFF`
       : null;
 
-  const sanitizedImages = Array.isArray(images)
-    ? images.filter((img) => typeof img === "string" && img.length > 0)
-    : [];
+  const sanitizedImages = useMemo(
+    () =>
+      Array.isArray(images)
+        ? images.filter((img) => typeof img === "string" && img.length > 0)
+        : [],
+    [images]
+  );
   const safeCardImage =
     (typeof image === "string" && image.length ? image : null) ||
     sanitizedImages[0] ||
@@ -478,3 +482,4 @@ const ProductCard = ({
 };
 
 export default ProductCard;
+

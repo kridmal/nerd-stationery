@@ -8,7 +8,6 @@ const ManageQuantityPage = () => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
   const [form] = Form.useForm();
   const navigate = useNavigate();
 
@@ -106,7 +105,6 @@ const ManageQuantityPage = () => {
             size="small"
             onClick={() => {
               setEditing(true);
-              setEditingProduct(record);
               setOpen(true);
               const code = record.itemCode || record.productCode || record.code || "";
               form.setFieldsValue({
@@ -151,7 +149,6 @@ const ManageQuantityPage = () => {
           type="primary"
           onClick={() => {
             setEditing(false);
-            setEditingProduct(null);
             form.resetFields();
             setOpen(true);
           }}
@@ -220,3 +217,5 @@ const ManageQuantityPage = () => {
 };
 
 export default ManageQuantityPage;
+
+

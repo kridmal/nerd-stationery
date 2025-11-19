@@ -16,8 +16,6 @@ import {
   deleteCategory,
   addSubCategory,
   deleteSubCategory,
-  updateCategory,
-  updateSubCategory,
 } from "../../../services/api";
 
 const { Panel } = Collapse;
@@ -192,3 +190,4 @@ const CategoryManager = () => {
 };
 
 export default CategoryManager;
+

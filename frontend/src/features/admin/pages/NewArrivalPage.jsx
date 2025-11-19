@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   InputNumber,
-  Select,
   AutoComplete,
   Table,
   Space,
@@ -311,3 +310,4 @@ const NewArrivalPage = () => {
 };
 
 export default NewArrivalPage;
+
