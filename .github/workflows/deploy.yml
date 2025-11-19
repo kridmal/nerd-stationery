@@ -20,6 +20,8 @@ jobs:
         key: ${{ secrets.AWS_KEY }}
         source: "."
         target: "~/nerd-stationery"
+        timeout: 120s             # 2 minutes
+        command_timeout: 20m      # For large uploads (React build files)
 
     - name: Restart Backend & Frontend on EC2
       uses: appleboy/ssh-action@v1.0.3
@@ -27,13 +29,14 @@ jobs:
         host: ${{ secrets.AWS_HOST }}
         username: ${{ secrets.AWS_USER }}
         key: ${{ secrets.AWS_KEY }}
-        command_timeout: 30m   # Safe
         script: |
           cd ~/nerd-stationery/backend
-          npm ci --silent
+          npm install --legacy-peer-deps
           pm2 restart nerd-backend || pm2 start server.js --name nerd-backend
 
           cd ~/nerd-stationery/frontend
-          npm ci --silent
-          npm run build --silent
+          npm install --legacy-peer-deps
+          npm run build
           pm2 restart nerd-frontend || pm2 serve dist 3000 --spa --name nerd-frontend
+        timeout: 900s              # 15 minutes
+        command_timeout: 900s
