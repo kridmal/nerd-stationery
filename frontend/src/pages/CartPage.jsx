@@ -1,12 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  loadCart,
-  saveCart,
-  updateQuantity,
-  removeFromCart,
-  addToCart,
-} from "../utils/cartUtils";
+import { loadCart, saveCart, removeFromCart } from "../utils/cartUtils";
 import { formatCurrency } from "../utils/productUtils";
 import "./CartPage.css";
 
