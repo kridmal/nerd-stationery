@@ -27,17 +27,16 @@ jobs:
       working-directory: frontend
       run: npm run build
 
-    # STEP 3 — Create a clean ZIP (exclude junk)
+    # STEP 3 — Create Deployment ZIP
     - name: Create Deployment ZIP
       run: |
         zip -r nerd.zip . \
         -x "*/node_modules/*" \
         -x "*/.git/*" \
-        -x "*.pem" \
         -x "*.env" \
-        -x "frontend/.cache/*"
+        -x "*.pem"
 
-    # STEP 4 — Upload ZIP to EC2
+    # STEP 4 — UPLOAD ZIP
     - name: Upload ZIP to EC2
       uses: appleboy/scp-action@v0.1.4
       with:
@@ -47,7 +46,7 @@ jobs:
         source: "nerd.zip"
         target: "~"
 
-    # STEP 5 — Unzip and Deploy
+    # STEP 5 — Deploy on EC2
     - name: Deploy on EC2
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -55,24 +54,29 @@ jobs:
         username: ${{ secrets.AWS_USER }}
         key: ${{ secrets.AWS_KEY }}
         script: |
-          # Ensure unzip exists
           sudo dnf install unzip -y
 
-          # Clean old project & extract new one
+          # Clean old deployment
           rm -rf ~/nerd-stationery
           mkdir ~/nerd-stationery
+
+          # Unzip new version
           unzip -o ~/nerd.zip -d ~/nerd-stationery
 
-          # BACKEND INSTALL & START
+          # Load ENV from backend.env file
+          export $(grep -v '^#' ~/config/backend.env | xargs)
+
+          # BACKEND INSTALL & RESTART
           cd ~/nerd-stationery/backend
           npm install --legacy-peer-deps
-          pm2 delete nerd-backend || true
-          pm2 start server.js --name nerd-backend
 
-          # FRONTEND SERVE (FIXED: serve *build/*, not dist)
+          pm2 delete nerd-backend || true
+          pm2 start server.js --name nerd-backend --update-env
+
+          # FRONTEND SERVE
           cd ~/nerd-stationery/frontend
           pm2 delete nerd-frontend || true
           pm2 serve build 3000 --spa --name nerd-frontend
 
           # Cleanup ZIP
-          rm -f ~/nerd.zip
+          rm ~/nerd.zip

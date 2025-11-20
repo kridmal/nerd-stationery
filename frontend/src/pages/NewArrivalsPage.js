@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CircularProgress } from "@mui/material";
 import api from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
-import { PLACEHOLDER_IMAGE, toNumber } from "../utils/productUtils";
+import { PLACEHOLDER_IMAGE, toNumber, createProductSlug } from "../utils/productUtils";
+import { addToCart } from "../utils/cartUtils";
 import "./ShowcasePages.css";
 
 const NEW_ARRIVALS_STORAGE_KEY = "newArrivals";
@@ -35,6 +37,7 @@ const buildArrivalCard = (entry, productIndex) => {
     "";
   const longDescription =
     entry.description || matchedProduct?.description || shortDescription;
+  const slug = createProductSlug(entry.name || matchedProduct?.name || entry.id);
 
   return {
     id: entry.id || entry.itemCode || entry.name,
@@ -53,6 +56,7 @@ const buildArrivalCard = (entry, productIndex) => {
     shortDescription,
     description: longDescription,
     price: entry.price ?? matchedProduct?.price,
+    slug,
   };
 };
 
@@ -60,6 +64,7 @@ function NewArrivalsPage() {
   const [products, setProducts] = useState([]);
   const [newArrivals, setNewArrivals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -147,6 +152,12 @@ function NewArrivalsPage() {
               price={item.price}
               badgeLabel="NEW"
               badgeColor="#FFC107"
+              slug={item.slug}
+              onAddToCart={() => navigate(`/products/${item.slug}`)}
+              onQuickViewAddToCart={(payload) => {
+                addToCart({ ...payload, slug: item.slug });
+                navigate("/cart");
+              }}
             />
           ))}
         </div>

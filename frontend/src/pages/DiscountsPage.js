@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CircularProgress } from "@mui/material";
 import api from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
 import { buildProductCardData } from "../utils/productUtils";
+import { addToCart } from "../utils/cartUtils";
 import "./ShowcasePages.css";
 
 function DiscountsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -50,9 +53,14 @@ function DiscountsPage() {
           ...data,
           badgeLabel,
           badgeColor: "#E53935",
+          onAddToCart: () => navigate(`/products/${data.slug}`),
+          onQuickViewAddToCart: (payload) => {
+            addToCart({ ...payload, slug: data.slug });
+            navigate("/cart");
+          },
         };
       }),
-    [discountedProducts]
+    [discountedProducts, navigate]
   );
 
   return (

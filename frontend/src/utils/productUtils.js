@@ -17,14 +17,25 @@ export const getPrimaryImage = (item) => {
   return item?.imageUrl || item?.image || PLACEHOLDER_IMAGE;
 };
 
+export const createProductSlug = (name) => {
+  if (!name) return "product";
+  return String(name)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "product";
+};
+
 export const buildProductCardData = (item) => {
   const fallbackDescription =
     typeof item.description === "string" ? item.description : "";
   const shortDescription =
     item.shortDescription || fallbackDescription || "";
+  const slug = createProductSlug(item?.name || item?.itemCode || item?._id);
 
   return {
     key: item._id || item.itemCode || item.id || item.name,
+    slug,
     image: getPrimaryImage(item),
     name: item.name,
     finalPrice:

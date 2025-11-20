@@ -14,7 +14,9 @@ import {
   formatCurrency,
   PLACEHOLDER_IMAGE,
   toNumber,
+  createProductSlug,
 } from "../utils/productUtils";
+import { addToCart } from "../utils/cartUtils";
 
 const NEW_ARRIVALS_STORAGE_KEY = "newArrivals";
 const VISIBLE_SLIDE_COUNT = 4;
@@ -150,6 +152,7 @@ function HomePage() {
         "";
       const longDescription =
         entry.description || matchedProduct?.description || shortDescription;
+      const slug = createProductSlug(entry.name || matchedProduct?.name || entry.id);
 
       return {
         ...entry,
@@ -166,6 +169,7 @@ function HomePage() {
           matchedProduct?.image ||
           PLACEHOLDER_IMAGE,
         images: matchedImages,
+        slug,
       };
     });
   }, [newArrivals, productIndex]);
@@ -352,6 +356,11 @@ function HomePage() {
                   price={item.price}
                   badgeLabel="NEW"
                   badgeColor="#FFC107"
+                  slug={item.slug}
+                  onQuickViewAddToCart={(payload) => {
+                    addToCart({ ...payload, slug: item.slug });
+                    navigate("/cart");
+                  }}
                 />
               ))}
             </div>
@@ -398,7 +407,14 @@ function HomePage() {
             </IconButton>
             <div className="product-slider__items">
               {visibleDiscounts.map((item) => (
-                <ProductCard key={item.key} {...item} />
+                <ProductCard
+                  key={item.key}
+                  {...item}
+                  onQuickViewAddToCart={(payload) => {
+                    addToCart({ ...payload, slug: item.slug });
+                    navigate("/cart");
+                  }}
+                />
               ))}
             </div>
             <IconButton

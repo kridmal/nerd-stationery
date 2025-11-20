@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getProducts, getCategories } from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
 import "./ProductsPage.css";
-import { PLACEHOLDER_IMAGE } from "../utils/productUtils";
+import { PLACEHOLDER_IMAGE, createProductSlug } from "../utils/productUtils";
+import { addToCart } from "../utils/cartUtils";
 
 const toNumeric = (value) => {
   if (value == null || value === "") return 0;
@@ -38,6 +40,7 @@ const ProductsCatalogPage = () => {
   const [searchCategory, setSearchCategory] = useState("all");
   const [sortOption, setSortOption] = useState("default");
   const [currentPage, setCurrentPage] = useState(1);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProductsData = async () => {
@@ -282,11 +285,13 @@ const ProductsCatalogPage = () => {
                 : "SALE"
               : null;
             const primaryImage = getPrimaryImage(p);
+            const slug = createProductSlug(p.name || p.itemCode || p._id);
             return (
               <ProductCard
                 key={p._id}
                 image={primaryImage}
                 images={Array.isArray(p.images) ? p.images : []}
+                slug={slug}
                 name={p.name}
                 finalPrice={finalPrice}
                 originalPrice={originalPrice}
@@ -296,6 +301,11 @@ const ProductsCatalogPage = () => {
                 price={p.price}
                 badgeLabel={badgeLabel}
                 badgeColor="#E53935"
+                onAddToCart={() => navigate(`/products/${slug}`)}
+                onQuickViewAddToCart={(payload) => {
+                  addToCart({ ...payload, slug });
+                  navigate("/cart");
+                }}
               />
             );
           })}

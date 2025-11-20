@@ -22,6 +22,7 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import RemoveIcon from "@mui/icons-material/Remove";
 import AddIcon from "@mui/icons-material/Add";
 import { PLACEHOLDER_IMAGE } from "../../utils/productUtils";
+import "./ProductCard.css";
 
 const toNumber = (value) => {
   if (typeof value === "number") return value;
@@ -41,6 +42,7 @@ const ProductCard = ({
   image,
   images = [],
   name,
+  slug,
   finalPrice,
   originalPrice,
   discountType,
@@ -50,6 +52,8 @@ const ProductCard = ({
   price,
   badgeLabel,
   badgeColor = "#1A73E8",
+  onAddToCart,
+  onQuickViewAddToCart,
 }) => {
   const fallbackPrice = toNumber(price);
   let baseOriginal = toNumber(originalPrice || finalPrice || fallbackPrice);
@@ -131,6 +135,24 @@ const ProductCard = ({
     if (event) event.stopPropagation();
     setDetailOpen(true);
   };
+  const handleDialogAddToCart = () => {
+    const payload = {
+      slug,
+      name,
+      image: safeCardImage,
+      finalPrice: baseFinal,
+      originalPrice: baseOriginal,
+      discountType: normalizedDiscountType,
+      discountValue,
+    };
+    if (onQuickViewAddToCart) {
+      onQuickViewAddToCart(payload);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.location.href = "/cart";
+    }
+  };
   const handleQuantityChange = (delta) => {
     setQuantity((prev) => Math.max(1, prev + delta));
   };
@@ -140,7 +162,6 @@ const ProductCard = ({
       <Card
         className="product-card"
         sx={{
-          borderRadius: 3,
           boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
           transition: "transform 0.2s ease, box-shadow 0.2s ease",
           backgroundColor: "#fff",
@@ -156,31 +177,17 @@ const ProductCard = ({
           },
         }}
       >
-        <Box sx={{ position: "relative" }}>
+        <Box className="product-card__media">
           <CardMedia
             component="img"
-            height="200"
             image={safeCardImage}
             alt={name}
-            sx={{
-              borderTopLeftRadius: 12,
-              borderTopRightRadius: 12,
-              objectFit: "cover",
-            }}
+            className="product-card__image"
           />
           {badgeLabel && (
             <Box
-              sx={{
-                position: "absolute",
-                top: 12,
-                left: 12,
-                backgroundColor: badgeColor,
-                color: "#fff",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                padding: "4px 10px",
-                borderRadius: 999,
-              }}
+              className="product-card__badge"
+              sx={{ backgroundColor: badgeColor }}
             >
               {badgeLabel}
             </Box>
@@ -205,6 +212,12 @@ const ProductCard = ({
                 sx={{
                   backgroundColor: "white",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (onAddToCart) {
+                    onAddToCart({ slug, name });
+                  }
                 }}
               >
                 <AddShoppingCartIcon fontSize="small" />
@@ -235,50 +248,21 @@ const ProductCard = ({
             </Tooltip>
           </Box>
         </Box>
-        <CardContent
-          sx={{
-            textAlign: "left",
-            display: "flex",
-            flexDirection: "column",
-            gap: 1,
-          }}
-        >
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 600,
-              color: "#1F1F1F",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-            }}
-          >
+        <CardContent className="product-card__content">
+          <Typography variant="h6" className="product-card__title">
             {name}
           </Typography>
           {shortText && (
-            <Typography
-              variant="body2"
-              sx={{
-                color: "#666",
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
+            <Typography variant="body2" className="product-card__description">
               {shortText}
             </Typography>
           )}
-          <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
-            <Typography variant="h6" sx={{ color: "#1A73E8", fontWeight: 700 }}>
+          <Box className="product-card__price">
+            <Typography variant="h6" className="product-card__price-value">
               {formatCurrency(baseFinal)}
             </Typography>
             {hasDiscount && (
-              <Typography
-                variant="body2"
-                sx={{ color: "#888", textDecoration: "line-through" }}
-              >
+              <Typography variant="body2" className="product-card__price-original">
                 {formatCurrency(baseOriginal)}
               </Typography>
             )}
@@ -286,11 +270,8 @@ const ProductCard = ({
               <Chip
                 label={discountLabel}
                 size="small"
-                sx={{
-                  backgroundColor: "#E53935",
-                  color: "#fff",
-                  fontWeight: 600,
-                }}
+                className="product-card__discount-chip"
+                sx={{ backgroundColor: "#E53935", color: "#fff" }}
               />
             )}
           </Box>
@@ -462,6 +443,7 @@ const ProductCard = ({
                   variant="contained"
                   startIcon={<AddShoppingCartIcon />}
                   sx={{ flex: 1 }}
+                  onClick={handleDialogAddToCart}
                 >
                   Add to cart
                 </Button>
