@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Table, Button, Input, message, Space, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import { getProductActivities } from "../../../services/api";
+import AdminSidebar from "../components/AdminSidebar";
+import "./AdminDashboardPage.css";
 
 const formatChangedValue = (value) => {
   if (value === null || value === undefined || value === "") return "-";
@@ -135,43 +137,55 @@ const ProductActivityPage = () => {
   ];
 
   return (
-    <div style={{ padding: 30 }}>
-      <Space
-        style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}
-      >
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
-          <Button type="primary" onClick={fetchActivityLogs} loading={loading}>
-            Refresh
-          </Button>
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Input
-            placeholder="Filter by Product ID"
-            value={productIdFilter}
-            onChange={(e) => setProductIdFilter(e.target.value)}
-            style={{ minWidth: 200 }}
+    <div className="admin-dashboard">
+      <AdminSidebar />
+      <div className="dashboard-content">
+        <header className="dashboard-header">
+          <h1>Activity Logs</h1>
+          <div className="admin-profile">
+            <span>Product audit trail</span>
+          </div>
+        </header>
+
+        <section className="dashboard-reports">
+          <Space
+            style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}
+          >
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
+              <Button type="primary" onClick={fetchActivityLogs} loading={loading}>
+                Refresh
+              </Button>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Input
+                placeholder="Filter by Product ID"
+                value={productIdFilter}
+                onChange={(e) => setProductIdFilter(e.target.value)}
+                style={{ minWidth: 200 }}
+              />
+              <Input
+                placeholder="Filter by Item Code"
+                value={itemCodeFilter}
+                onChange={(e) => setItemCodeFilter(e.target.value)}
+                style={{ minWidth: 200 }}
+              />
+              <Button onClick={fetchActivityLogs} type="default">
+                Apply Filters
+              </Button>
+              <Button onClick={clearFilters}>Clear</Button>
+            </div>
+          </Space>
+          <Table
+            columns={columns}
+            dataSource={activities}
+            rowKey="_id"
+            loading={loading}
+            pagination={{ pageSize: 10 }}
+            scroll={{ x: 1000 }}
           />
-          <Input
-            placeholder="Filter by Item Code"
-            value={itemCodeFilter}
-            onChange={(e) => setItemCodeFilter(e.target.value)}
-            style={{ minWidth: 200 }}
-          />
-          <Button onClick={fetchActivityLogs} type="default">
-            Apply Filters
-          </Button>
-          <Button onClick={clearFilters}>Clear</Button>
-        </div>
-      </Space>
-      <Table
-        columns={columns}
-        dataSource={activities}
-        rowKey="_id"
-        loading={loading}
-        pagination={{ pageSize: 10 }}
-        scroll={{ x: 1000 }}
-      />
+        </section>
+      </div>
     </div>
   );
 };

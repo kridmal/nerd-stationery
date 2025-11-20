@@ -2,6 +2,21 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./AdminSidebar.css";
 
+const menuItems = [
+  { label: "Dashboard", path: "/admin-dashboard" },
+  { label: "Manage Products", path: "/admin/products" },
+  { label: "Manage Orders", path: "/admin/orders" },
+  { label: "Manage Customers", path: "/admin/customers" },
+  { label: "Stock Manager", path: "/admin/stock-manager" },
+  { label: "Report", path: "/admin/reports" },
+  {
+    label: "Activity Logs",
+    path: "/admin/activity-logs",
+    matchPaths: ["/admin/activity-logs", "/admin/products/activity"],
+  },
+  { label: "Admin Settings", path: "/admin/settings" },
+];
+
 const AdminSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -12,29 +27,36 @@ const AdminSidebar = () => {
     navigate("/admin-login");
   };
 
+  const isActive = (matchPaths, path) => {
+    if (Array.isArray(matchPaths) && matchPaths.length > 0) {
+      return matchPaths.some((candidate) => location.pathname.startsWith(candidate));
+    }
+    return location.pathname === path;
+  };
+
   return (
     <div className="admin-sidebar">
-      <h2 className="sidebar-title">Nerd Stationery Admin</h2>
+      <div>
+        <div className="sidebar-brand" onClick={() => navigate("/admin-dashboard")}>
+          <img src="/images/logo.png" alt="Nerd Stationery" className="sidebar-logo" />
+          <div>
+            <p className="brand-label">Nerd Stationery</p>
+            <p className="brand-subtitle">Admin Console</p>
+          </div>
+        </div>
 
-      <ul className="sidebar-menu">
-        <li
-          className={location.pathname === "/admin-dashboard" ? "active" : ""}
-          onClick={() => navigate("/admin-dashboard")}
-        >
-          Dashboard
-        </li>
-
-        <li
-          className={location.pathname === "/admin/products" ? "active" : ""}
-          onClick={() => navigate("/admin/products")}
-        >
-          Manage Products
-        </li>
-
-        <li className="disabled">Manage Orders (Coming Soon)</li>
-        <li className="disabled">Manage Users (Coming Soon)</li>
-        <li className="disabled">Reports (Coming Soon)</li>
-      </ul>
+        <ul className="sidebar-menu">
+          {menuItems.map((item) => (
+            <li
+              key={item.label}
+              className={`sidebar-link ${isActive(item.matchPaths, item.path) ? "active" : ""}`}
+              onClick={() => navigate(item.path)}
+            >
+              {item.label}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <button className="logout-btn" onClick={handleLogout}>
         Logout
@@ -44,4 +66,3 @@ const AdminSidebar = () => {
 };
 
 export default AdminSidebar;
-
