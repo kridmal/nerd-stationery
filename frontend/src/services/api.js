@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create an Axios instance
 const API = axios.create({
-  baseURL: "http://54.179.149.89/:5000/api",
+  baseURL: "http://localhost:5000/api",
 });
 
 // âœ… Automatically attach admin token (if exists)
@@ -15,10 +15,18 @@ API.interceptors.request.use((config) => {
 });
 
 // âœ… Product APIs
+const normalizeListResponse = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.products)) return payload.products;
+  if (Array.isArray(payload?.items)) return payload.items;
+  return [];
+};
+
 export const getProducts = async () => {
   try {
     const res = await API.get("/products");
-    return res.data;
+    return normalizeListResponse(res.data);
   } catch (error) {
     console.error("Error fetching products:", error);
     return [];
