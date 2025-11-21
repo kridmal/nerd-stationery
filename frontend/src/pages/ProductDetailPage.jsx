@@ -56,11 +56,33 @@ const ProductDetailPage = () => {
   const primaryImage = product ? getPrimaryImage(product) : null;
   const imageGallery = useMemo(() => {
     if (!product) return [];
-    if (Array.isArray(product.images) && product.images.length > 0) {
-      return product.images.filter((img) => typeof img === "string" && img.length > 0);
-    }
+    const mainImages = Array.isArray(product.images)
+      ? product.images.filter(
+          (img) =>
+            typeof img === "string" &&
+            img.length > 5 &&
+            !img.startsWith("__variant_image__")
+        )
+      : [];
+    const variantImages = Array.isArray(product.variants)
+      ? product.variants
+          .map((v) => v?.image)
+          .filter(
+            (img) =>
+              typeof img === "string" &&
+              img.length > 5 &&
+              !img.startsWith("__variant_image__")
+          )
+      : [];
+    const combined = [...mainImages, ...variantImages];
+    if (combined.length) return combined;
     return primaryImage ? [primaryImage] : [];
   }, [product, primaryImage]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [imageGallery]);
 
   const originalPrice = product
     ? toNumber(
@@ -133,37 +155,56 @@ const ProductDetailPage = () => {
           }}
         >
           <Box flex={1} display="flex" flexDirection="column" gap={2}>
-            {primaryImage && (
-              <Box
-                component="img"
-                src={primaryImage}
-                alt={product.name}
-                sx={{
-                  width: "100%",
-                  borderRadius: 2,
-                  objectFit: "cover",
-                  maxHeight: 420,
-                }}
-              />
-            )}
-            {imageGallery.length > 1 && (
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {imageGallery.slice(0, 4).map((img, idx) => (
-                  <Box
-                    key={`${img}-${idx}`}
-                    component="img"
-                    src={img}
-                    alt={`${product.name} ${idx + 1}`}
-                    sx={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: 1,
-                      objectFit: "cover",
-                      border: "1px solid #eee",
-                    }}
-                  />
-                ))}
-              </Stack>
+            {imageGallery.length > 0 && (
+              <>
+                <Box
+                  component="img"
+                  src={imageGallery[activeImageIndex] || primaryImage}
+                  alt={product.name}
+                  sx={{
+                    width: "100%",
+                    borderRadius: 2,
+                    objectFit: "cover",
+                    maxHeight: 420,
+                    border: "1px solid #eee",
+                  }}
+                />
+                {imageGallery.length > 1 && (
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {imageGallery.map((img, idx) => (
+                      <Box
+                        key={`${img}-${idx}`}
+                        component="button"
+                        type="button"
+                        onClick={() => setActiveImageIndex(idx)}
+                        sx={{
+                          border: "none",
+                          padding: 0,
+                          background: "transparent",
+                          cursor: "pointer",
+                          opacity: idx === activeImageIndex ? 1 : 0.7,
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={img}
+                          alt={`${product.name} ${idx + 1}`}
+                          sx={{
+                            width: 80,
+                            height: 80,
+                            borderRadius: 1,
+                            objectFit: "cover",
+                            border:
+                              idx === activeImageIndex
+                                ? "2px solid #1A73E8"
+                                : "1px solid #eee",
+                          }}
+                        />
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </>
             )}
           </Box>
 

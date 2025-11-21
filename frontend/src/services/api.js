@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create an Axios instance
 const API = axios.create({
-  baseURL: "http://54.179.149.89:5000/api",
+  baseURL: "http://localhost:5000/api",
 });
 
 // âœ… Automatically attach admin token (if exists)
@@ -142,6 +142,12 @@ export const updateSubCategory = async (data) => {
 
 export const deleteSubCategory = async (categoryId, subcategoryId) => {
   const res = await API.delete(`/categories/${categoryId}/sub/${subcategoryId}`);
+  return res.data;
+};
+
+// Orders
+export const createOrder = async (payload) => {
+  const res = await API.post("/orders", payload);
   return res.data;
 };
 

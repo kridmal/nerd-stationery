@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   Button,
@@ -13,9 +13,9 @@ import {
   Popconfirm,
   Upload,
   Tag,
+  Divider,
 } from "antd";
-import { Tooltip } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import {
   getProducts,
   addProduct,
@@ -33,7 +33,7 @@ const clamp = (value, min = 0, max = Number.POSITIVE_INFINITY) => {
 
 const normalizeDiscountType = (type) => {
   if (!type) return "none";
-  return type === "value" ? "fixed" : type;
+  return ["none", "percentage", "fixed"].includes(type) ? type : "none";
 };
 
 const calculateFinalPrice = (originalPrice, discountType, discountValue) => {
@@ -56,18 +56,6 @@ const calculateFinalPrice = (originalPrice, discountType, discountValue) => {
 
 const formatCurrency = (value) => `Rs ${Number(value || 0).toFixed(2)}`;
 
-const formatDiscountLabel = (type, value) => {
-  const normalizedType = normalizeDiscountType(type);
-  const numericValue = safeNumber(value, 0);
-  if (normalizedType === "percentage") {
-    return `${numericValue}% OFF`;
-  }
-  if (normalizedType === "fixed") {
-    return `Rs ${numericValue.toFixed(2)} OFF`;
-  }
-  return "No Discount";
-};
-
 const safeNumber = (value, fallback = 0) => {
   if (value == null || value === "") return fallback;
   const parsed =
@@ -77,14 +65,21 @@ const safeNumber = (value, fallback = 0) => {
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-const deriveOriginalPrice = (product) =>
-  safeNumber(
+const deriveOriginalPrice = (product) => {
+  if (Array.isArray(product?.variants) && product.variants.length) {
+    const prices = product.variants
+      .map((v) => safeNumber(v.price, null))
+      .filter((n) => n != null);
+    if (prices.length) return Math.min(...prices);
+  }
+  return safeNumber(
     product?.originalPrice ??
       product?.unitPrice ??
       product?.price ??
       product?.finalPrice ??
       0
   );
+};
 
 const deriveFinalPrice = (product) => {
   if (product?.finalPrice != null) return safeNumber(product.finalPrice, 0);
@@ -100,31 +95,36 @@ const deriveFinalPrice = (product) => {
   return calculateFinalPrice(original, type, value);
 };
 
+const formatDiscountLabel = (type, value) => {
+  const normalizedType = normalizeDiscountType(type);
+  const numericValue = safeNumber(value, 0);
+  if (normalizedType === "percentage") {
+    return `${numericValue}% OFF`;
+  }
+  if (normalizedType === "fixed") {
+    return `Rs ${numericValue.toFixed(2)} OFF`;
+  }
+  return "No Discount";
+};
+
 const AdminProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [subcategories, setSubcategories] = useState([]); // ? new state
+  const [subcategories, setSubcategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [form] = Form.useForm();
   const [searchValue, setSearchValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
-  const [showVariation, setShowVariation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [existingImages, setExistingImages] = useState([]);
   const [newImageFiles, setNewImageFiles] = useState([]);
+  const [variantImageFiles, setVariantImageFiles] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
   const discountTypeWatch = normalizeDiscountType(Form.useWatch("discountType", form) || "none");
-  const discountValueWatch = Form.useWatch("discountValue", form) || 0;
-  const originalPriceWatch = Form.useWatch("originalPrice", form) || 0;
-  const finalPricePreview = useMemo(
-    () => calculateFinalPrice(originalPriceWatch, discountTypeWatch, discountValueWatch),
-    [originalPriceWatch, discountTypeWatch, discountValueWatch]
-  );
   const navigate = useNavigate();
 
-  // ? Fetch products
   const fetchProducts = async () => {
     try {
       const data = await getProducts();
@@ -135,7 +135,6 @@ const AdminProductsPage = () => {
     }
   };
 
-  // ? Fetch categories
   const fetchCategories = async () => {
     try {
       const data = await getCategories();
@@ -145,74 +144,63 @@ const AdminProductsPage = () => {
     }
   };
 
-  // Subcategories are derived from the selected category
-
   useEffect(() => {
     fetchProducts();
     fetchCategories();
   }, []);
 
-  // Ensure form fields reflect correct quantities when modal opens
   useEffect(() => {
     if (!isModalOpen) return;
     if (editingProduct) {
-      const np = {
+      const normalizedVariants =
+        (editingProduct.variants && editingProduct.variants.length
+          ? editingProduct.variants
+          : [
+              {
+                brand: editingProduct.variations?.brand || "",
+                size: editingProduct.variations?.size || "",
+                color: editingProduct.variations?.color || "",
+                sku: `${editingProduct.itemCode}-default`,
+                price: deriveOriginalPrice(editingProduct),
+                quantity: Number(editingProduct.quantity || 0),
+                image: (editingProduct.images || [])[0] || "",
+              },
+            ]) || [];
+
+      const cat = (categories || []).find(
+        (c) => (c?.name || "").toLowerCase() === (editingProduct.category || "").toLowerCase()
+      );
+      setSubcategories(Array.isArray(cat?.subcategories) ? [...cat.subcategories] : []);
+
+      form.setFieldsValue({
         itemCode: editingProduct.itemCode ?? editingProduct.productCode ?? "",
         name: editingProduct.name ?? "",
         category: editingProduct.category ?? "",
         subcategory: editingProduct.subcategory ?? "",
-        originalPrice: deriveOriginalPrice(editingProduct),
-        quantity: Number(editingProduct.quantity ?? 0),
-        variations: editingProduct.variations ?? null,
         shortDescription: editingProduct.shortDescription ?? "",
         discountType: normalizeDiscountType(editingProduct.discountType),
         discountValue: Number(editingProduct.discountValue ?? 0),
-        images: Array.isArray(editingProduct.images) ? editingProduct.images : [],
-      };
-
-      const cat = (categories || []).find(
-        (c) => (c?.name || "").toLowerCase() === (np.category || "").toLowerCase()
-      );
-      let list = Array.isArray(cat?.subcategories) ? [...cat.subcategories] : [];
-      if (
-        np.subcategory &&
-        !list.find((s) => (s?.name || "").toLowerCase() === np.subcategory.toLowerCase())
-      ) {
-        list.unshift({ _id: "__current__", name: np.subcategory });
-      }
-      setSubcategories(list);
-
-      form.setFieldsValue({
-        itemCode: np.itemCode,
-        name: np.name,
-        category: np.category,
-        subcategory: np.subcategory,
-        originalPrice: np.originalPrice,
-        existingQuantity: np.quantity,
-        addNewQuantity: null,
-        shortDescription: np.shortDescription,
-        brand: np.variations?.brand || "",
-        size: np.variations?.size || "",
-        color: np.variations?.color || "",
-        discountType: np.discountType || "none",
-        discountValue: np.discountType === "none" ? 0 : np.discountValue,
+        variants: normalizedVariants,
       });
-      setExistingImages(np.images || []);
+      setExistingImages(editingProduct.images || []);
       setNewImageFiles([]);
+      setVariantImageFiles({});
     } else {
+      form.resetFields();
       form.setFieldsValue({
-        existingQuantity: 0,
-        addNewQuantity: 0,
         discountType: "none",
         discountValue: 0,
+        variants: [
+          { brand: "", size: "", color: "", sku: "", price: 0, quantity: 0, image: "" },
+        ],
       });
       setSubcategories([]);
       setExistingImages([]);
       setNewImageFiles([]);
+      setVariantImageFiles({});
     }
   }, [isModalOpen, editingProduct, categories, form]);
 
-  // ? Debounced search
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!searchValue.trim()) {
@@ -220,8 +208,12 @@ const AdminProductsPage = () => {
         setSuggestions([]);
       } else {
         const lower = searchValue.toLowerCase();
-        const filtered = products.filter((p) => { const name = p?.name?.toLowerCase() || ""; const category = p?.category?.toLowerCase() || ""; const code = (p?.itemCode ?? p?.productCode ?? "").toString().toLowerCase(); return name.includes(lower) || category.includes(lower) || code.includes(lower); });
-
+        const filtered = (products || []).filter((p) => {
+          const name = p?.name?.toLowerCase() || "";
+          const category = p?.category?.toLowerCase() || "";
+          const code = (p?.itemCode ?? p?.productCode ?? "").toString().toLowerCase();
+          return name.includes(lower) || category.includes(lower) || code.includes(lower);
+        });
         setFilteredProducts(filtered);
         setSuggestions(
           filtered.slice(0, 5).map((p) => ({
@@ -233,76 +225,92 @@ const AdminProductsPage = () => {
     return () => clearTimeout(timeout);
   }, [searchValue, products]);
 
-  // ? Add or Update
+  const buildFormData = (data, mainImageFiles = [], variantImageFilesMap = {}) => {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === undefined) return;
+      if (value === null) {
+        formData.append(key, "");
+        return;
+      }
+      if (typeof value === "object") {
+        formData.append(key, JSON.stringify(value));
+        return;
+      }
+      formData.append(key, value);
+    });
+
+    (mainImageFiles || []).forEach((file) => {
+      const actualFile = file?.originFileObj || file;
+      if (actualFile) {
+        formData.append("images", actualFile);
+      }
+    });
+
+    const variantIndexes = Object.keys(variantImageFilesMap)
+      .map((k) => Number(k))
+      .filter((n) => !Number.isNaN(n))
+      .sort((a, b) => a - b);
+
+    variantIndexes.forEach((idx) => {
+      const file = variantImageFilesMap[idx]?.[0]?.originFileObj || variantImageFilesMap[idx]?.[0];
+      if (file) {
+        formData.append("variantImages", file);
+      }
+    });
+
+    return formData;
+  };
+
   const handleAddOrUpdate = async (values) => {
     try {
       setLoading(true);
+      const variantIndexes = Object.keys(variantImageFiles)
+        .map((k) => Number(k))
+        .filter((n) => !Number.isNaN(n))
+        .sort((a, b) => a - b);
 
-      const normalizedDiscountType = normalizeDiscountType(values.discountType || "none");
-      const normalizedDiscountValue =
-        normalizedDiscountType === "none" ? 0 : Number(values.discountValue || 0);
+      const placeholderIndex = new Map();
+      variantIndexes.forEach((fieldIdx, orderIdx) => {
+        placeholderIndex.set(fieldIdx, orderIdx);
+      });
 
-      const base = {
+      const variantPayload = (values.variants || []).map((variant, idx) => {
+        const hasUpload = (variantImageFiles[idx] || []).length > 0;
+        const placeholder = hasUpload
+          ? `__variant_image__${placeholderIndex.get(idx) ?? 0}`
+          : variant.image || "";
+
+        return {
+          _id: variant._id,
+          brand: variant.brand || "",
+          size: variant.size || "",
+          color: variant.color || "",
+          sku: variant.sku || `${values.itemCode}-${idx + 1}`,
+          price: Number(variant.price || 0),
+          quantity: Number(variant.quantity || 0),
+          image: placeholder,
+        };
+      });
+
+      const payload = {
+        itemCode: values.itemCode,
         name: values.name,
         category: values.category,
         subcategory: values.subcategory,
-        originalPrice: Number(values.originalPrice || 0),
         shortDescription: values.shortDescription || "",
-        variations: showVariation
-          ? {
-              brand: values.brand || "",
-              size: values.size || "",
-              color: values.color || "",
-            }
-          : null,
-        discountType: normalizedDiscountType,
-        discountValue: normalizedDiscountValue,
+        discountType: values.discountType || "none",
+        discountValue: values.discountType === "none" ? 0 : Number(values.discountValue || 0),
+        variants: variantPayload,
+        existingImages,
       };
 
-      const buildFormData = (data) => {
-        const formData = new FormData();
-        Object.entries(data).forEach(([key, value]) => {
-          if (value === undefined) return;
-          if (value === null) {
-            formData.append(key, "");
-            return;
-          }
-          if (typeof value === "object" && !(value instanceof File)) {
-            formData.append(key, JSON.stringify(value));
-            return;
-          }
-          formData.append(key, value);
-        });
-        formData.append(
-          "existingImages",
-          JSON.stringify(existingImages.filter(Boolean))
-        );
-        newImageFiles.forEach((file) => {
-          const actualFile = file?.originFileObj || file;
-          if (actualFile) {
-            formData.append("images", actualFile);
-          }
-        });
-        return formData;
-      };
+      const formData = buildFormData(payload, newImageFiles, variantImageFiles);
 
       if (editingProduct) {
-        const payload = {
-          ...base,
-          itemCode: editingProduct.itemCode,
-          addNewQuantity: Number(values.addNewQuantity || 0),
-        };
-        const formData = buildFormData(payload);
         await updateProduct(editingProduct._id, formData);
         message.success("Product updated successfully!");
       } else {
-        const payload = {
-          ...base,
-          itemCode: values.itemCode,
-          existingQuantity: 0,
-          addNewQuantity: Number(values.addNewQuantity || 0),
-        };
-        const formData = buildFormData(payload);
         await addProduct(formData);
         message.success("Product added successfully!");
       }
@@ -311,9 +319,9 @@ const AdminProductsPage = () => {
       setIsModalOpen(false);
       form.resetFields();
       setEditingProduct(null);
-      setShowVariation(false);
       setExistingImages([]);
       setNewImageFiles([]);
+      setVariantImageFiles({});
     } catch (error) {
       const msg = error?.response?.data?.message || error.message || "Failed to save product.";
       message.error(msg);
@@ -322,7 +330,6 @@ const AdminProductsPage = () => {
     }
   };
 
-  // ? Delete
   const handleDelete = async (id) => {
     try {
       await deleteProduct(id);
@@ -333,64 +340,27 @@ const AdminProductsPage = () => {
     }
   };
 
-  // ? Add Product Button
   const handleAddProduct = () => {
     setEditingProduct(null);
-    form.resetFields();
-    form.setFieldsValue({
-      existingQuantity: 0,
-      addNewQuantity: 0,
-      discountType: "none",
-      discountValue: 0,
-    });
-    setShowVariation(false);
-    setSubcategories([]);
-    setExistingImages([]);
-    setNewImageFiles([]);
     setIsModalOpen(true);
   };
 
-  // ? Edit Product
   const handleEdit = (record) => {
     const np = {
+      ...record,
       itemCode: record.itemCode ?? record.productCode ?? "",
-      name: record.name ?? "",
-      category: record.category ?? "",
-      subcategory: record.subcategory ?? "",
-      originalPrice: deriveOriginalPrice(record),
-      quantity: Number(record.quantity ?? 0),
-      variations: record.variations ?? null,
-      shortDescription: record.shortDescription ?? "",
-      discountType: normalizeDiscountType(record.discountType),
-      discountValue: Number(record.discountValue ?? 0),
-      images: Array.isArray(record.images) ? record.images : [],
-      _id: record._id,
     };
     setEditingProduct(np);
-    setShowVariation(!!np.variations);
-    setExistingImages(np.images || []);
-    setNewImageFiles([]);
     setIsModalOpen(true);
-  };
-
-  const handleExistingImageRemove = (url) => {
-    setExistingImages((prev) => prev.filter((img) => img !== url));
   };
 
   const openImagePreview = (url) => {
     if (url) setPreviewImage(url);
   };
 
-  // ? Table Columns
   const columns = [
     { title: "Item Code", dataIndex: "itemCode", key: "itemCode" },
     { title: "Product Name", dataIndex: "name", key: "name" },
-    {
-      title: "Short Description",
-      dataIndex: "shortDescription",
-      key: "shortDescription",
-      render: (text) => text || "-",
-    },
     {
       title: "Original Price",
       dataIndex: "originalPrice",
@@ -398,102 +368,39 @@ const AdminProductsPage = () => {
       render: (_, record) => formatCurrency(deriveOriginalPrice(record)),
     },
     {
-      title: "Discount Type",
-      dataIndex: "discountType",
-      key: "discountType",
-      render: (value) => normalizeDiscountType(value || "none"),
+      title: "Discount",
+      key: "discount",
+      render: (_, record) => formatDiscountLabel(record.discountType, record.discountValue),
     },
     {
-      title: "Discount Value",
-      key: "discountValue",
-      render: (_, record) => {
-        const type = normalizeDiscountType(record.discountType) || "none";
-        if (type === "none") {
-          return <span style={{ color: "#888" }}>No Discount</span>;
-        }
-        const label = formatDiscountLabel(type, record.discountValue);
-        return (
-          <Tooltip title={label}>
-            <span>{label}</span>
-          </Tooltip>
-        );
-      },
-    },
-    {
-      title: "Final Price (Auto)",
+      title: "Final Price",
       dataIndex: "finalPrice",
       key: "finalPrice",
-      render: (value, record) => {
-        const finalValue =
-          value != null && value !== ""
-            ? safeNumber(value, deriveFinalPrice(record))
-            : deriveFinalPrice(record);
-        const originalValue = deriveOriginalPrice(record);
-        const normalizedType = normalizeDiscountType(record.discountType);
-        const hasDiscount =
-          normalizedType !== "none" &&
-          Number(record.discountValue) > 0 &&
-          originalValue > finalValue;
-        const label = hasDiscount
-          ? formatDiscountLabel(normalizedType, record.discountValue)
-          : "No Discount";
-
-        return (
-          <Tooltip
-            title={
-              hasDiscount ? (
-                <div>
-                  <div style={{ textDecoration: "line-through", color: "#ff4d4f" }}>
-                    {formatCurrency(originalValue)}
-                  </div>
-                  <div>{label}</div>
-                </div>
-              ) : (
-                "No Discount Applied"
-              )
-            }
-          >
-            <span>{formatCurrency(finalValue)}</span>
-          </Tooltip>
-        );
-      },
-    },
-    { title: "Category", dataIndex: "category", key: "category" },
-    { title: "Subcategory", dataIndex: "subcategory", key: "subcategory" },
-    { title: "Quantity", dataIndex: "quantity", key: "quantity" },
-    {
-      title: "Images",
-      dataIndex: "images",
-      key: "images",
-      render: (images) => {
-        if (!Array.isArray(images) || images.length === 0) {
-          return <span>-</span>;
-        }
-        return (
-          <Space direction="vertical" size={0}>
-            {images.map((url, idx) => (
-              <Button
-                type="link"
-                key={`${url}-${idx}`}
-                onClick={() => openImagePreview(url)}
-              >
-                {`img ${idx + 1}`}
-              </Button>
-            ))}
-          </Space>
-        );
-      },
+      render: (_, record) => formatCurrency(deriveFinalPrice(record)),
     },
     {
-      title: "Variation",
-      key: "variation",
+      title: "Quantity",
+      dataIndex: "quantity",
+      key: "quantity",
+      render: (value, record) =>
+        value ??
+        (Array.isArray(record.variants)
+          ? record.variants.reduce((sum, v) => sum + Number(v.quantity || 0), 0)
+          : 0),
+    },
+    {
+      title: "Variants",
+      key: "variants",
       render: (_, record) =>
-        record.variations ? (
-          <>
-            <div>Brand: {record.variations.brand}</div>
-            <div>Size: {record.variations.size}</div>
-            <div>Color: {record.variations.color}</div>
-          </>
+        Array.isArray(record.variants) && record.variants.length ? (
+          <Space direction="vertical" size={0}>
+            {record.variants.slice(0, 3).map((v) => (
+              <span key={v._id || v.sku || `${v.brand}-${v.size}-${v.color}`}>
+                {v.sku || "SKU"} • {v.color || "Color"} {v.size || ""} • Qty {v.quantity}
+              </span>
+            ))}
+            {record.variants.length > 3 && <span>+{record.variants.length - 3} more</span>}
+          </Space>
         ) : (
           "-"
         ),
@@ -546,7 +453,7 @@ const AdminProductsPage = () => {
           Manage Categories
         </Button>
 
-        <Button onClick={() => navigate("/admin/manage-quantity")}>Manage Quantity</Button>{" "}
+        <Button onClick={() => navigate("/admin/manage-quantity")}>Manage Quantity</Button>
         <Button onClick={() => navigate("/admin/new-arrivals")}>New Arrivals</Button>
         <Button onClick={() => navigate("/admin/products/activity")}>
           Activity Table
@@ -581,17 +488,12 @@ const AdminProductsPage = () => {
         pagination={{ pageSize: 6 }}
       />
 
-      {/* ? Modal */}
       <Modal
         title={editingProduct ? "Edit Product" : "Add Product"}
         open={isModalOpen}
         onCancel={() => {
           setIsModalOpen(false);
           setEditingProduct(null);
-          form.resetFields();
-          setShowVariation(false);
-          setExistingImages([]);
-          setNewImageFiles([]);
         }}
         footer={null}
         destroyOnClose
@@ -636,7 +538,6 @@ const AdminProductsPage = () => {
                   (c) => (c?.name || "") === val
                 );
                 setSubcategories(cat?.subcategories || []);
-                // reset subcategory when category changes
                 form.setFieldsValue({ subcategory: undefined });
               }}
             >
@@ -662,84 +563,103 @@ const AdminProductsPage = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item
-            name="originalPrice"
-            label="Original Price"
-            rules={[{ required: true, message: "Please enter original price" }]}
+          <Divider orientation="left">Variants</Divider>
+          <Form.List
+            name="variants"
+            rules={[
+              {
+                validator: async (_, variants) => {
+                  if (!variants || variants.length < 1) {
+                    return Promise.reject(new Error("At least one variant is required"));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
           >
-            <InputNumber style={{ width: "100%" }} min={0} />
-          </Form.Item>
-
-          <Form.Item name="existingQuantity" label="Existing Quantity">
-            <InputNumber style={{ width: "100%" }} disabled min={0} />
-          </Form.Item>
-
-          <Form.Item name="addNewQuantity" label="Add New Quantity">
-            <InputNumber style={{ width: "100%" }} min={0} />
-          </Form.Item>
-
-          {/* ? Variations */}
-          <Form.Item label="Add Variation?">
-            <Button
-              type={showVariation ? "primary" : "default"}
-              onClick={() => setShowVariation(!showVariation)}
-            >
-              {showVariation ? "Variation Enabled" : "Add Variation"}
-            </Button>
-          </Form.Item>
-
-          {showVariation && (
-            <>
-              <Form.Item name="brand" label="Brand">
-                <Input placeholder="Enter brand name" />
-              </Form.Item>
-
-              <Form.Item name="size" label="Size">
-                <Input placeholder="Enter size (e.g. Medium, Large)" />
-              </Form.Item>
-
-              <Form.Item name="color" label="Color">
-                <Input placeholder="Enter color" />
-              </Form.Item>
-            </>
-          )}
-
-          {existingImages.length > 0 && (
-            <Form.Item label="Existing Images">
-              <Space wrap size={[8, 8]}>
-                {existingImages.map((url, idx) => (
-                  <Tag
-                    key={`${url}-${idx}`}
-                    closable
-                    onClose={(e) => {
-                      e.preventDefault();
-                      handleExistingImageRemove(url);
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...rest }) => (
+                  <div
+                    key={key}
+                    style={{
+                      border: "1px solid #f0f0f0",
+                      padding: 12,
+                      borderRadius: 8,
+                      marginBottom: 12,
                     }}
-                    style={{ cursor: "pointer" }}
                   >
-                    <span onClick={() => openImagePreview(url)}>{`img ${idx + 1}`}</span>
-                  </Tag>
+                    <Space align="start" style={{ width: "100%" }} wrap>
+                      <Form.Item
+                        {...rest}
+                        name={[name, "sku"]}
+                        label="SKU"
+                        rules={[{ required: true, message: "SKU required" }]}
+                      >
+                        <Input placeholder="SKU" />
+                      </Form.Item>
+                      <Form.Item {...rest} name={[name, "brand"]} label="Brand">
+                        <Input placeholder="Brand" />
+                      </Form.Item>
+                      <Form.Item {...rest} name={[name, "size"]} label="Size">
+                        <Input placeholder="Size" />
+                      </Form.Item>
+                      <Form.Item {...rest} name={[name, "color"]} label="Color">
+                        <Input placeholder="Color" />
+                      </Form.Item>
+                      <Form.Item
+                        {...rest}
+                        name={[name, "price"]}
+                        label="Price"
+                        rules={[{ required: true, message: "Price required" }]}
+                      >
+                        <InputNumber min={0} style={{ width: 140 }} />
+                      </Form.Item>
+                      <Form.Item
+                        {...rest}
+                        name={[name, "quantity"]}
+                        label="Quantity"
+                        rules={[{ required: true, message: "Quantity required" }]}
+                      >
+                        <InputNumber min={0} style={{ width: 140 }} />
+                      </Form.Item>
+                      <Form.Item label="Variant Image" style={{ minWidth: 220 }}>
+                        <Upload
+                          listType="text"
+                          maxCount={1}
+                          accept="image/*"
+                          beforeUpload={() => false}
+                          fileList={variantImageFiles[name] || []}
+                          onChange={({ fileList }) =>
+                            setVariantImageFiles((prev) => ({
+                              ...prev,
+                              [name]: fileList.slice(0, 1),
+                            }))
+                          }
+                        >
+                          <Button icon={<UploadOutlined />}>Select</Button>
+                        </Upload>
+                        <div style={{ fontSize: 12, color: "#888" }}>
+                          Leave empty to keep existing (when editing).
+                        </div>
+                      </Form.Item>
+                      <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={() => remove(name)}
+                        disabled={fields.length === 1}
+                      >
+                        Delete Variant
+                      </Button>
+                    </Space>
+                  </div>
                 ))}
-              </Space>
-            </Form.Item>
-          )}
-
-          <Form.Item label="Upload Images">
-            <Upload
-              listType="text"
-              multiple
-              accept="image/*"
-              maxCount={10}
-              fileList={newImageFiles}
-              beforeUpload={() => false}
-              onChange={({ fileList }) => setNewImageFiles(fileList.slice(0, 10))}
-            >
-              <Button icon={<UploadOutlined />}>Select Images</Button>
-            </Upload>
-            <div style={{ fontSize: 12, color: "#888" }}>
-              Upload up to 10 images (max 5MB each). New uploads are added on top of retained images.
-            </div>
-          </Form.Item>
+                <Button type="dashed" icon={<PlusOutlined />} onClick={() => add()}>
+                  Add Variant
+                </Button>
+              </>
+            )}
+          </Form.List>
 
           <Form.Item
             name="discountType"
@@ -768,104 +688,71 @@ const AdminProductsPage = () => {
                         return Promise.reject("Percentage must be between 0 and 100.");
                       }
                     }
-                    if (t === "fixed") {
-                      const base = Number(getFieldValue("originalPrice") ?? 0);
-                      if (n > base) {
-                        return Promise.reject("Fixed discount cannot exceed original price.");
-                      }
-                    }
                     return Promise.resolve();
                   },
                 }),
               ]}
             >
-              <InputNumber
-                style={{ width: "100%" }}
-                min={0}
-                formatter={(v) => {
-                  if (v == null || v === "") return "";
-                  if (discountTypeWatch === "percentage") return `${v}%`;
-                  if (discountTypeWatch === "fixed") return `Rs ${v}`;
-                  return `${v}`;
-                }}
-                parser={(v) => (v || "").replace(/[^0-9.]/g, "")}
-              />
+              <InputNumber style={{ width: "100%" }} min={0} />
             </Form.Item>
           )}
 
-          <Form.Item label="Final Price (auto)">
-            <Tooltip
-              title={
-                discountTypeWatch !== "none" && Number(discountValueWatch) > 0 ? (
-                  <div>
-                    <div style={{ textDecoration: "line-through" }}>
-                      {formatCurrency(originalPriceWatch)}
-                    </div>
-                    <div>{formatDiscountLabel(discountTypeWatch, discountValueWatch)}</div>
-                  </div>
-                ) : (
-                  "No Discount Applied"
-                )
-              }
-            >
-              <div
-                style={{
-                  padding: "8px 12px",
-                  border: "1px solid #d9d9d9",
-                  borderRadius: 6,
-                  background: "#fafafa",
-                  fontWeight: 600,
-                }}
-              >
-                {formatCurrency(finalPricePreview)}
-              </div>
-            </Tooltip>
-          </Form.Item>
+          {existingImages.length > 0 && (
+            <Form.Item label="Existing Images">
+              <Space wrap size={[8, 8]}>
+                {existingImages.map((url, idx) => (
+                  <Tag
+                    key={`${url}-${idx}`}
+                    closable
+                    onClose={(e) => {
+                      e.preventDefault();
+                      setExistingImages((prev) => prev.filter((img) => img !== url));
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <span onClick={() => openImagePreview(url)}>{`img ${idx + 1}`}</span>
+                  </Tag>
+                ))}
+              </Space>
+            </Form.Item>
+          )}
 
-          <Form.Item shouldUpdate={(prev, cur) =>
-              prev.addNewQuantity !== cur.addNewQuantity ||
-              prev.existingQuantity !== cur.existingQuantity
-            }>
-            {({ getFieldValue }) => {
-              const existing = Number(getFieldValue("existingQuantity") || 0);
-              const addNew = Number(getFieldValue("addNewQuantity") || 0);
-              const total = existing + addNew;
-              return (
-                <div style={{ textAlign: "right", color: "#555", marginTop: 8 }}>
-                  New Total Quantity: <strong>{total}</strong>
-                </div>
-              );
-            }}
+          <Form.Item label="Upload Main Images">
+            <Upload
+              listType="text"
+              multiple
+              accept="image/*"
+              maxCount={10}
+              fileList={newImageFiles}
+              beforeUpload={() => false}
+              onChange={({ fileList }) => setNewImageFiles(fileList.slice(0, 10))}
+            >
+              <Button icon={<UploadOutlined />}>Select Images</Button>
+            </Upload>
+            <div style={{ fontSize: 12, color: "#888" }}>
+              Upload up to 10 images (max 5MB each). New uploads are added on top of retained images.
+            </div>
           </Form.Item>
 
           <Form.Item>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "10px",
-              }}
-            >
-              <Button onClick={() => setIsModalOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={loading}>
-                {editingProduct ? "Update Product" : "Add Product"}
-              </Button>
-            </div>
+            <Button type="primary" htmlType="submit" loading={loading} block>
+              {editingProduct ? "Update Product" : "Add Product"}
+            </Button>
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
         open={!!previewImage}
-        footer={null}
         onCancel={() => setPreviewImage(null)}
+        footer={null}
         centered
       >
         {previewImage && (
           <img
             src={previewImage}
-            alt="Product Preview"
-            style={{ width: "100%", borderRadius: 8 }}
+            alt="Preview"
+            style={{ width: "100%", objectFit: "contain" }}
           />
         )}
       </Modal>
@@ -874,13 +761,3 @@ const AdminProductsPage = () => {
 };
 
 export default AdminProductsPage;
-
-
-
-
-
-
-
-
-
-

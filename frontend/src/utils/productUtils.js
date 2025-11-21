@@ -1,5 +1,6 @@
+// Use a data URI placeholder to avoid external network/DNS issues
 export const PLACEHOLDER_IMAGE =
-  "https://via.placeholder.com/320x200.png?text=Product";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'%3E%3Crect width='320' height='200' fill='%23E5E7EB'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23787C87' font-family='Arial, sans-serif' font-size='18'%3EProduct%20Image%3C/text%3E%3C/svg%3E";
 
 export const toNumber = (value, fallback = 0) => {
   if (value == null || value === "") return fallback;
@@ -10,10 +11,32 @@ export const toNumber = (value, fallback = 0) => {
   return Number.isNaN(parsed) ? fallback : parsed;
 };
 
-export const getPrimaryImage = (item) => {
-  if (Array.isArray(item?.images) && item.images.length > 0) {
-    return item.images[0];
+const normalizeImageValue = (img) => {
+  if (typeof img === "string" && img.startsWith("__variant_image__")) return null;
+  if (typeof img === "string" && img.trim().length > 0) return img.trim();
+  if (img && typeof img === "object") {
+    if (typeof img.url === "string" && img.url.trim().length > 0) return img.url.trim();
+    if (typeof img.src === "string" && img.src.trim().length > 0) return img.src.trim();
   }
+  return null;
+};
+
+export const normalizeImagesList = (list) => {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(normalizeImageValue)
+    .filter((v) => typeof v === "string" && v.length > 0);
+};
+
+export const getPrimaryImage = (item) => {
+  const mainImages = normalizeImagesList(item?.images);
+  if (mainImages.length > 0) return mainImages[0];
+
+  const variantImages = normalizeImagesList(
+    Array.isArray(item?.variants) ? item.variants.map((v) => v?.image) : []
+  );
+  if (variantImages.length > 0) return variantImages[0];
+
   return item?.imageUrl || item?.image || PLACEHOLDER_IMAGE;
 };
 
@@ -47,7 +70,10 @@ export const buildProductCardData = (item) => {
     shortDescription,
     description: fallbackDescription || shortDescription,
     price: item.price,
-    images: Array.isArray(item.images) ? item.images : [],
+    images: [
+      ...normalizeImagesList(item.images),
+      ...normalizeImagesList(Array.isArray(item.variants) ? item.variants.map((v) => v?.image) : []),
+    ],
   };
 };
 

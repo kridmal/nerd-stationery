@@ -1,14 +1,5 @@
 import mongoose from "mongoose";
 
-const variationSchema = new mongoose.Schema(
-  {
-    brand: { type: String, trim: true },
-    size: { type: String, trim: true },
-    color: { type: String, trim: true },
-  },
-  { _id: false }
-);
-
 const clampNumber = (value, min = 0, max = Number.POSITIVE_INFINITY) => {
   const numericValue = Number(value) || 0;
   return Math.min(Math.max(numericValue, min), max);
@@ -29,6 +20,29 @@ const calculateFinalPrice = (originalPrice, discountType, discountValue) => {
   const finalPrice = Math.max(0, basePrice - discountAmount);
   return Number(finalPrice.toFixed(2));
 };
+
+const variantSchema = new mongoose.Schema(
+  {
+    brand: { type: String, trim: true, default: "" },
+    size: { type: String, trim: true, default: "" },
+    color: { type: String, trim: true, default: "" },
+    sku: { type: String, trim: true, required: true },
+    price: { type: Number, required: true, min: [0, "Price cannot be negative"] },
+    quantity: { type: Number, required: true, min: [0, "Quantity cannot be negative"] },
+    image: { type: String, trim: true, default: "" },
+  },
+  { _id: true }
+);
+
+// Legacy single-variation schema retained for backward compatibility
+const legacyVariationSchema = new mongoose.Schema(
+  {
+    brand: { type: String, trim: true },
+    size: { type: String, trim: true },
+    color: { type: String, trim: true },
+  },
+  { _id: false }
+);
 
 const productSchema = new mongoose.Schema(
   {
@@ -60,14 +74,13 @@ const productSchema = new mongoose.Schema(
     },
     originalPrice: {
       type: Number,
-      required: [true, "Original price is required"],
+      default: 0,
       min: [0, "Original price cannot be negative"],
     },
     finalPrice: {
       type: Number,
-      required: true,
-      min: [0, "Final price cannot be negative"],
       default: 0,
+      min: [0, "Final price cannot be negative"],
     },
     discountType: {
       type: String,
@@ -81,7 +94,7 @@ const productSchema = new mongoose.Schema(
     },
     quantity: {
       type: Number,
-      required: [true, "Quantity is required"],
+      default: 0,
       min: [0, "Quantity cannot be negative"],
     },
     minQuantity: {
@@ -89,13 +102,18 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Minimum quantity cannot be negative"],
     },
-    variations: {
-      type: variationSchema,
-      default: null,
+    variants: {
+      type: [variantSchema],
+      default: [],
     },
     images: {
       type: [String],
       default: [],
+    },
+    // Legacy single-variation slot kept for backward compatibility
+    variations: {
+      type: legacyVariationSchema,
+      default: null,
     },
   },
   {
@@ -103,26 +121,24 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-productSchema.virtual("unitPrice")
-  .get(function getUnitPrice() {
-    return this.originalPrice;
-  })
-  .set(function setUnitPrice(value) {
-    this.originalPrice = value;
-  });
-
 productSchema.set("toJSON", { virtuals: true });
 productSchema.set("toObject", { virtuals: true });
 
 productSchema.pre("validate", function handlePricing(next) {
   const product = this;
 
-  // Backfill legacy documents that only stored `unitPrice`
-  if (
-    (product.originalPrice == null || Number.isNaN(product.originalPrice)) &&
-    product.get("unitPrice") != null
-  ) {
-    product.originalPrice = Number(product.get("unitPrice")) || 0;
+  const variantPrices = (product.variants || [])
+    .map((v) => Number(v?.price) || 0)
+    .filter((n) => !Number.isNaN(n));
+  const variantQuantities = (product.variants || [])
+    .map((v) => Number(v?.quantity) || 0)
+    .filter((n) => !Number.isNaN(n));
+
+  if (variantQuantities.length) {
+    product.quantity = variantQuantities.reduce((sum, q) => sum + q, 0);
+  }
+  if (variantPrices.length) {
+    product.originalPrice = Math.min(...variantPrices);
   }
 
   if (!["percentage", "fixed", "none"].includes(product.discountType)) {
@@ -143,6 +159,21 @@ productSchema.pre("validate", function handlePricing(next) {
     product.discountType,
     product.discountValue
   );
+
+  // Legacy fallback: if document has quantity but no variants, seed a default variant
+  if ((!product.variants || product.variants.length === 0) && product.quantity > 0) {
+    product.variants = [
+      {
+        brand: product.variations?.brand ?? "",
+        size: product.variations?.size ?? "",
+        color: product.variations?.color ?? "",
+        sku: `${product.itemCode}-default`,
+        price: product.originalPrice || 0,
+        quantity: product.quantity,
+        image: (product.images || [])[0] || "",
+      },
+    ];
+  }
 
   next();
 });

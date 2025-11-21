@@ -36,10 +36,26 @@ router.get("/", async (req, res) => {
 router.get("/activity", authAdmin, getProductActivities);
 
 // Add Product (admin only)
-router.post("/", authAdmin, upload.array("images", 10), createProduct);
+router.post(
+  "/",
+  authAdmin,
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "variantImages", maxCount: 30 },
+  ]),
+  createProduct
+);
 
 // Update Product (admin only)
-router.put("/:id", authAdmin, upload.array("images", 10), updateProduct);
+router.put(
+  "/:id",
+  authAdmin,
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "variantImages", maxCount: 30 },
+  ]),
+  updateProduct
+);
 
 // Update only minimum quantity (admin only)
 router.put("/:id/min-quantity", authAdmin, async (req, res) => {

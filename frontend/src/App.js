@@ -13,6 +13,10 @@ import DiscountsPage from "./pages/DiscountsPage";
 import PackagesPage from "./pages/PackagesPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import CartPage from "./pages/CartPage";
+import CheckoutOverviewPage from "./pages/CheckoutOverviewPage";
+import CheckoutDeliveryPage from "./pages/CheckoutDeliveryPage";
+import CheckoutReviewPage from "./pages/CheckoutReviewPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage";
 import AdminProductsPage from "./features/admin/pages/AdminProductsPage";
 import ProductActivityPage from "./features/admin/pages/ProductActivityPage";
 import AdminLoginPage from "./features/admin/pages/AdminLoginPage";
@@ -56,6 +60,10 @@ function App() {
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:slug" element={<ProductDetailPage />} />
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutOverviewPage />} />
+            <Route path="/checkout/delivery" element={<CheckoutDeliveryPage />} />
+            <Route path="/checkout/review" element={<CheckoutReviewPage />} />
+            <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
             <Route path="/contact" element={<ContactPage />} />
             <Route path="/new-arrivals" element={<NewArrivalsPage />} />
             <Route path="/discounts" element={<DiscountsPage />} />

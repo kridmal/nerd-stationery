@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -14,27 +14,12 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
-import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 function Header() {
-  const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const showQuickDetour = location.pathname === "/";
-
-  const scrollOrNavigate = useCallback(
-    (sectionId, stateKey) => {
-      if (location.pathname === "/") {
-        const section = document.getElementById(sectionId);
-        if (section) {
-          section.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      } else {
-        navigate("/", { state: { scrollTo: stateKey } });
-      }
-    },
-    [location.pathname, navigate]
-  );
 
   const navItems = useMemo(
     () => [
@@ -42,11 +27,6 @@ function Header() {
         label: "New Arrival",
         type: "combo",
         to: "/new-arrivals",
-        quickDetour: {
-          sectionId: "new-arrivals-section",
-          stateKey: "new-arrivals",
-          label: "Quick Detour",
-        },
         badgeColor: "#E53935",
         badgeText: "New",
       },
@@ -54,11 +34,6 @@ function Header() {
         label: "Discount",
         type: "combo",
         to: "/discounts",
-        quickDetour: {
-          sectionId: "discounts-section",
-          stateKey: "discounts",
-          label: "Quick Detour",
-        },
         badgeColor: "#E53935",
         badgeText: "Sale",
       },
@@ -66,11 +41,6 @@ function Header() {
         label: "Packages",
         type: "combo",
         to: "/packages",
-        quickDetour: {
-          sectionId: "packages-section",
-          stateKey: "packages",
-          label: "Quick Detour",
-        },
         badgeColor: "#1A73E8",
         badgeText: "Save",
       },
@@ -82,17 +52,9 @@ function Header() {
     []
   );
 
-  const handleQuickDetour = (quickDetour) => {
-    if (!quickDetour) return;
-    scrollOrNavigate(quickDetour.sectionId, quickDetour.stateKey);
-    setMobileOpen(false);
-  };
-
   const handleNavClick = (item) => {
     if (item.type === "link" || item.type === "combo") {
       navigate(item.to);
-    } else if (item.type === "section") {
-      scrollOrNavigate(item.sectionId, item.stateKey);
     }
     setMobileOpen(false);
   };
@@ -196,24 +158,15 @@ function Header() {
                 {item.type !== "link" &&
                   highlightBadge(item.badgeColor, item.badgeText)}
               </Button>
-              {item.quickDetour && showQuickDetour && (
-                <Button
-                  size="small"
-                  onClick={() => handleQuickDetour(item.quickDetour)}
-                  sx={{
-                    textTransform: "none",
-                    fontSize: "0.7rem",
-                    color: "#820035",
-                    p: 0,
-                    minWidth: "auto",
-                    fontWeight: 600,
-                  }}
-                >
-                  {item.quickDetour.label}
-                </Button>
-              )}
             </Box>
           ))}
+          <IconButton
+            aria-label="Go to cart"
+            onClick={() => navigate("/cart")}
+            sx={{ color: "#3D3D3D" }}
+          >
+            <ShoppingCartOutlinedIcon />
+          </IconButton>
         </Box>
 
         <IconButton
@@ -281,29 +234,23 @@ function Header() {
                     </span>
                   }
                 />
-                {item.quickDetour && showQuickDetour && (
-                  <Button
-                    size="small"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      handleQuickDetour(item.quickDetour);
-                    }}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: "0.75rem",
-                      color: "#820035",
-                      p: 0,
-                      minWidth: "auto",
-                      fontWeight: 600,
-                      alignSelf: "flex-start",
-                    }}
-                  >
-                    {item.quickDetour.label}
-                  </Button>
-                )}
               </ListItemButton>
             ))}
           </List>
+          <Box sx={{ px: 2, py: 1 }}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => {
+                navigate("/cart");
+                setMobileOpen(false);
+              }}
+              startIcon={<ShoppingCartOutlinedIcon />}
+              sx={{ background: "#820035", "&:hover": { background: "#6a002a" } }}
+            >
+              Cart
+            </Button>
+          </Box>
         </Drawer>
       </Toolbar>
     </AppBar>
