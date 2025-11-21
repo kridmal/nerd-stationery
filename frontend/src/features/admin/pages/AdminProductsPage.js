@@ -345,6 +345,12 @@ const AdminProductsPage = () => {
     setIsModalOpen(true);
   };
 
+  const clearVariantImage = (idx) => {
+    const variants = form.getFieldValue("variants") || [];
+    const next = variants.map((v, i) => (i === idx ? { ...v, image: "" } : v));
+    form.setFieldsValue({ variants: next });
+  };
+
   const handleEdit = (record) => {
     const np = {
       ...record,
@@ -642,6 +648,27 @@ const AdminProductsPage = () => {
                         <div style={{ fontSize: 12, color: "#888" }}>
                           Leave empty to keep existing (when editing).
                         </div>
+                        {(() => {
+                          const currentImage = form.getFieldValue(["variants", name, "image"]);
+                          return currentImage ? (
+                            <Space size="small" style={{ marginTop: 6 }}>
+                              <Button size="small" onClick={() => openImagePreview(currentImage)}>
+                                View current
+                              </Button>
+                              <Button
+                                size="small"
+                                danger
+                                onClick={() => clearVariantImage(name)}
+                              >
+                                Remove current
+                              </Button>
+                            </Space>
+                          ) : (
+                            <div style={{ fontSize: 12, color: "#999", marginTop: 6 }}>
+                              No existing variant image.
+                            </div>
+                          );
+                        })()}
                       </Form.Item>
                       <Button
                         danger

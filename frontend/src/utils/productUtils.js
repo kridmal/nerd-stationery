@@ -30,11 +30,11 @@ export const normalizeImagesList = (list) => {
 
 export const getPrimaryImage = (item) => {
   const mainImages = normalizeImagesList(item?.images);
-  if (mainImages.length > 0) return mainImages[0];
-
   const variantImages = normalizeImagesList(
     Array.isArray(item?.variants) ? item.variants.map((v) => v?.image) : []
   );
+
+  if (mainImages.length > 0) return mainImages[0];
   if (variantImages.length > 0) return variantImages[0];
 
   return item?.imageUrl || item?.image || PLACEHOLDER_IMAGE;
@@ -55,6 +55,13 @@ export const buildProductCardData = (item) => {
   const shortDescription =
     item.shortDescription || fallbackDescription || "";
   const slug = createProductSlug(item?.name || item?.itemCode || item?._id);
+  const mainImages = normalizeImagesList(item.images);
+  const variantImages = normalizeImagesList(
+    Array.isArray(item.variants) ? item.variants.map((v) => v?.image) : []
+  );
+  const allImages = [...mainImages, ...variantImages].filter(
+    (img, idx, arr) => arr.indexOf(img) === idx
+  );
 
   return {
     key: item._id || item.itemCode || item.id || item.name,
@@ -70,10 +77,7 @@ export const buildProductCardData = (item) => {
     shortDescription,
     description: fallbackDescription || shortDescription,
     price: item.price,
-    images: [
-      ...normalizeImagesList(item.images),
-      ...normalizeImagesList(Array.isArray(item.variants) ? item.variants.map((v) => v?.image) : []),
-    ],
+    images: allImages,
   };
 };
 

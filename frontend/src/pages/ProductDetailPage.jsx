@@ -15,6 +15,7 @@ import {
   createProductSlug,
   formatCurrency,
   getPrimaryImage,
+  normalizeImagesList,
   toNumber,
 } from "../utils/productUtils";
 import { getProducts } from "../services/api";
@@ -26,6 +27,10 @@ const ProductDetailPage = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedSize, setSelectedSize] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -39,6 +44,13 @@ const ProductDetailPage = () => {
           return createProductSlug(candidate) === slug;
         });
         setProduct(matched || null);
+        if (matched && matched.variants?.length) {
+          const firstVariant = matched.variants[0];
+          setSelectedVariant(firstVariant);
+          setSelectedBrand(firstVariant.brand);
+          setSelectedSize(firstVariant.size);
+          setSelectedColor(firstVariant.color);
+        }
         if (!matched) {
           setError("We couldn't find that product. It may have been removed.");
         }
@@ -53,31 +65,60 @@ const ProductDetailPage = () => {
     loadProduct();
   }, [slug]);
 
+  const brandOptions = useMemo(
+    () => [...new Set(product?.variants?.map((v) => v.brand))].filter(Boolean),
+    [product]
+  );
+  const sizeOptions = useMemo(
+    () => [...new Set(product?.variants?.map((v) => v.size))].filter(Boolean),
+    [product]
+  );
+  const colorOptions = useMemo(
+    () => [...new Set(product?.variants?.map((v) => v.color))].filter(Boolean),
+    [product]
+  );
+
+  useEffect(() => {
+    if (selectedVariant || !product?.variants?.length) return;
+    const first = product.variants[0];
+    setSelectedVariant(first);
+    setSelectedBrand(first.brand);
+    setSelectedSize(first.size);
+    setSelectedColor(first.color);
+  }, [product, selectedVariant]);
+
+  useEffect(() => {
+    if (!product) return;
+    const match = product.variants?.find(
+      (v) =>
+        v.brand === selectedBrand &&
+        v.size === selectedSize &&
+        v.color === selectedColor
+    );
+    if (match) setSelectedVariant(match);
+  }, [selectedBrand, selectedSize, selectedColor, product]);
+
   const primaryImage = product ? getPrimaryImage(product) : null;
   const imageGallery = useMemo(() => {
     if (!product) return [];
-    const mainImages = Array.isArray(product.images)
-      ? product.images.filter(
-          (img) =>
-            typeof img === "string" &&
-            img.length > 5 &&
-            !img.startsWith("__variant_image__")
-        )
-      : [];
-    const variantImages = Array.isArray(product.variants)
-      ? product.variants
-          .map((v) => v?.image)
-          .filter(
-            (img) =>
-              typeof img === "string" &&
-              img.length > 5 &&
-              !img.startsWith("__variant_image__")
-          )
-      : [];
-    const combined = [...mainImages, ...variantImages];
+
+    const mainImages = normalizeImagesList(product.images);
+    const variantImages = normalizeImagesList(
+      Array.isArray(product.variants) ? product.variants.map((v) => v?.image) : []
+    );
+    const selectedVariantImage = normalizeImagesList([selectedVariant?.image]);
+
+    const combinedOrder = mainImages.length
+      ? [...mainImages, ...selectedVariantImage, ...variantImages]
+      : [...selectedVariantImage, ...variantImages];
+
+    const combined = combinedOrder.filter(
+      (img, idx, arr) => typeof img === "string" && img.length > 5 && arr.indexOf(img) === idx
+    );
+
     if (combined.length) return combined;
     return primaryImage ? [primaryImage] : [];
-  }, [product, primaryImage]);
+  }, [product, primaryImage, selectedVariant]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
@@ -93,9 +134,7 @@ const ProductDetailPage = () => {
           0
       )
     : 0;
-  const finalPrice = product
-    ? toNumber(product.finalPrice ?? product.price ?? originalPrice, originalPrice)
-    : 0;
+  const finalPrice = selectedVariant ? selectedVariant.price : originalPrice;
   const hasDiscount =
     product &&
     product.discountType &&
@@ -109,17 +148,24 @@ const ProductDetailPage = () => {
       : null;
 
   const handleAddToCart = () => {
-    if (!product) return;
-    const computedSlug = createProductSlug(
-      product.name || product.itemCode || product._id
-    );
+    if (!product || !selectedVariant) return;
+
+    const computedSlug = createProductSlug(product.name);
+
     addToCart({
-      ...product,
+      productId: product._id,
+      variantId: selectedVariant._id,
+      sku: selectedVariant.sku,
+      name: product.name,
+      brand: selectedVariant.brand,
+      size: selectedVariant.size,
+      color: selectedVariant.color,
+      image: selectedVariant.image || primaryImage,
+      finalPrice: selectedVariant.price,
+      quantity: 1,
       slug: computedSlug,
-      image: primaryImage,
-      finalPrice,
-      originalPrice,
     });
+
     navigate("/cart");
   };
 
@@ -231,6 +277,68 @@ const ProductDetailPage = () => {
                 </Stack>
               )}
             </Box>
+
+            <Divider />
+
+            <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ mt: 2 }}>
+              {brandOptions.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Brand
+                  </Typography>
+                  <select
+                    value={selectedBrand}
+                    onChange={(e) => setSelectedBrand(e.target.value)}
+                    style={{ padding: "8px", borderRadius: "6px", minWidth: "140px" }}
+                  >
+                    {brandOptions.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                </Box>
+              )}
+
+              {sizeOptions.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Size
+                  </Typography>
+                  <select
+                    value={selectedSize}
+                    onChange={(e) => setSelectedSize(e.target.value)}
+                    style={{ padding: "8px", borderRadius: "6px", minWidth: "140px" }}
+                  >
+                    {sizeOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </Box>
+              )}
+
+              {colorOptions.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                    Color
+                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+                    {colorOptions.map((c) => (
+                      <Button
+                        key={c}
+                        variant={selectedColor === c ? "contained" : "outlined"}
+                        onClick={() => setSelectedColor(c)}
+                        sx={{ textTransform: "none" }}
+                      >
+                        {c}
+                      </Button>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
 
             <Divider />
 

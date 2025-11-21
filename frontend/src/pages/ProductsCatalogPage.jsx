@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getProducts, getCategories } from "../services/api";
 import ProductCard from "../components/ProductCard/ProductCard";
 import "./ProductsPage.css";
-import { PLACEHOLDER_IMAGE, createProductSlug } from "../utils/productUtils";
+import { createProductSlug, getPrimaryImage, normalizeImagesList } from "../utils/productUtils";
 import { addToCart } from "../utils/cartUtils";
 
 const toNumeric = (value) => {
@@ -20,13 +20,6 @@ const getFinalPrice = (product) =>
 
 const getOriginalPrice = (product) =>
   toNumeric(product.originalPrice ?? product.unitPrice ?? product.price ?? product.finalPrice ?? 0);
-
-const getPrimaryImage = (product) => {
-  if (Array.isArray(product?.images) && product.images.length > 0) {
-    return product.images[0];
-  }
-  return product?.imageUrl || product?.image || PLACEHOLDER_IMAGE;
-};
 
 const ProductsCatalogPage = () => {
   const [products, setProducts] = useState([]);
@@ -284,13 +277,20 @@ const ProductsCatalogPage = () => {
                 ? `${Math.round(p.discountValue)}% OFF`
                 : "SALE"
               : null;
-            const primaryImage = getPrimaryImage(p);
+            const mainImages = normalizeImagesList(p.images);
+            const variantImages = normalizeImagesList(
+              Array.isArray(p.variants) ? p.variants.map((v) => v?.image) : []
+            );
+            const mergedImages = [...mainImages, ...variantImages].filter(
+              (img, idx, arr) => arr.indexOf(img) === idx
+            );
+            const primaryImage = mergedImages[0] || getPrimaryImage(p);
             const slug = createProductSlug(p.name || p.itemCode || p._id);
             return (
               <ProductCard
                 key={p._id}
                 image={primaryImage}
-                images={Array.isArray(p.images) ? p.images : []}
+                images={mergedImages}
                 slug={slug}
                 name={p.name}
                 finalPrice={finalPrice}

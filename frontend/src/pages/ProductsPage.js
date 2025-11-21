@@ -10,6 +10,7 @@ import {
   Stack,
 } from "@mui/material";
 import { getProducts } from "../services/api";
+import { getPrimaryImage, normalizeImagesList } from "../utils/productUtils";
 import ProductCard from "../components/ProductCard/ProductCard";
 import "./ProductsPage.css";
 
@@ -248,16 +249,20 @@ function ProductsPage() {
   const productCards = useMemo(
     () =>
       products.map((product) => {
-        const resolvedImage =
-          Array.isArray(product.images) && product.images.length > 0
-            ? product.images[0]
-            : product.image || product.imageUrl || null;
+        const mainImages = normalizeImagesList(product.images);
+        const variantImages = normalizeImagesList(
+          Array.isArray(product.variants) ? product.variants.map((v) => v?.image) : []
+        );
+        const mergedImages = [...mainImages, ...variantImages].filter(
+          (img, idx, arr) => arr.indexOf(img) === idx
+        );
+        const resolvedImage = mergedImages[0] || getPrimaryImage(product);
 
         return (
           <ProductCard
             key={product._id || product.id || product.itemCode}
             image={resolvedImage}
-            images={Array.isArray(product.images) ? product.images : []}
+            images={mergedImages}
             name={product.name}
             finalPrice={
               product.finalPrice ??
