@@ -1,11 +1,23 @@
-const express = require('express');
+import express from "express";
+import {
+  createPackage,
+  deletePackage,
+  getPackages,
+  updatePackage,
+} from "../controllers/packageController.js";
+
 const router = express.Router();
-const { createPackage, getPackages } = require('../controllers/packageController');
 
 // Create package
-router.post('/', createPackage);
+router.post("/", createPackage);
 
 // Get all packages
-router.get('/', getPackages);
+router.get("/", getPackages);
 
-module.exports = router;
+// Update package
+router.put("/:id", updatePackage);
+
+// Delete package
+router.delete("/:id", deletePackage);
+
+export default router;

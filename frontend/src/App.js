@@ -28,8 +28,10 @@ import ManageOrdersPage from "./features/admin/pages/ManageOrdersPage";
 import ManageCustomersPage from "./features/admin/pages/ManageCustomersPage";
 import StockManagerPage from "./features/admin/pages/StockManagerPage";
 import AdminReportsPage from "./features/admin/pages/AdminReportsPage";
-import AdminSettingsPage from "./features/admin/pages/AdminSettingsPage";
+import AdminUsersPage from "./features/admin/pages/AdminUsersPage";
+import AdminAccountPage from "./features/admin/pages/AdminAccountPage";
 import theme from "./theme";
+import PackageManagerPage from "./features/admin/pages/PackageManagerPage";
 
 
 function LayoutWrapper({ children }) {
@@ -80,7 +82,9 @@ function App() {
             <Route path="/admin/customers" element={<ManageCustomersPage />} />
             <Route path="/admin/stock-manager" element={<StockManagerPage />} />
             <Route path="/admin/reports" element={<AdminReportsPage />} />
-            <Route path="/admin/settings" element={<AdminSettingsPage />} />
+            <Route path="/admin/users" element={<AdminUsersPage />} />
+            <Route path="/admin/account" element={<AdminAccountPage />} />
+            <Route path="/admin/packages" element={<PackageManagerPage />} />
             <Route path="/admin/products/activity" element={<ProductActivityPage />} />
             <Route path="/admin/activity-logs" element={<ProductActivityPage />} />
           </Routes>

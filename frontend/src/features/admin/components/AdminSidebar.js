@@ -1,10 +1,15 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import useAdminSession from "../hooks/useAdminSession";
 import "./AdminSidebar.css";
 
 const menuItems = [
   { label: "Dashboard", path: "/admin-dashboard" },
+  { label: "Account Settings", path: "/admin/account" },
+  { label: "Admin Users", path: "/admin/users", requiresRoot: true },
   { label: "Manage Products", path: "/admin/products" },
+  { label: "Packages", path: "/admin/packages" },
+  { label: "New Arrivals", path: "/admin/new-arrivals" },
   { label: "Manage Orders", path: "/admin/orders" },
   { label: "Manage Customers", path: "/admin/customers" },
   { label: "Stock Manager", path: "/admin/stock-manager" },
@@ -13,19 +18,14 @@ const menuItems = [
     label: "Activity Logs",
     path: "/admin/activity-logs",
     matchPaths: ["/admin/activity-logs", "/admin/products/activity"],
+    requiresRoot: true,
   },
-  { label: "Admin Settings", path: "/admin/settings" },
 ];
 
 const AdminSidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
-  const handleLogout = () => {
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("adminInfo");
-    navigate("/admin-login");
-  };
+  const { admin, roleLabel, isRootAdmin, logout } = useAdminSession();
 
   const isActive = (matchPaths, path) => {
     if (Array.isArray(matchPaths) && matchPaths.length > 0) {
@@ -45,20 +45,27 @@ const AdminSidebar = () => {
           </div>
         </div>
 
+        <div className="sidebar-user">
+          <p className="sidebar-user-name">{admin?.name || admin?.email || "Admin User"}</p>
+          <p className="sidebar-user-role">{roleLabel}</p>
+        </div>
+
         <ul className="sidebar-menu">
-          {menuItems.map((item) => (
-            <li
-              key={item.label}
-              className={`sidebar-link ${isActive(item.matchPaths, item.path) ? "active" : ""}`}
-              onClick={() => navigate(item.path)}
-            >
-              {item.label}
-            </li>
-          ))}
+          {menuItems
+            .filter((item) => !item.requiresRoot || isRootAdmin)
+            .map((item) => (
+              <li
+                key={item.label}
+                className={`sidebar-link ${isActive(item.matchPaths, item.path) ? "active" : ""}`}
+                onClick={() => navigate(item.path)}
+              >
+                {item.label}
+              </li>
+            ))}
         </ul>
       </div>
 
-      <button className="logout-btn" onClick={handleLogout}>
+      <button className="logout-btn" onClick={logout}>
         Logout
       </button>
     </div>

@@ -31,6 +31,11 @@ function PackagesPage() {
     [packages]
   );
 
+  const visiblePackages = useMemo(
+    () => preparedPackages.filter((pkg) => pkg.isActive !== false),
+    [preparedPackages]
+  );
+
   return (
     <div className="showcase-page">
       <section className="showcase-hero">
@@ -42,17 +47,24 @@ function PackagesPage() {
         <div className="showcase-loading">
           <CircularProgress />
         </div>
-      ) : preparedPackages.length === 0 ? (
+      ) : visiblePackages.length === 0 ? (
         <p className="showcase-empty">
           There are no packages available right now. Please check back soon!
         </p>
       ) : (
         <div className="showcase-packages">
-          {preparedPackages.map((pkg) => (
+          {visiblePackages.map((pkg) => (
             <article className="package-card--wide" key={pkg.id}>
               <h3>{pkg.name}</h3>
               <p>{pkg.description}</p>
-              <span>{formatCurrency(pkg.price)}</span>
+              <div className="package-card__meta">
+                <span className="package-card__price">{formatCurrency(pkg.price)}</span>
+                {pkg.totalOriginal ? (
+                  <span className="package-card__value">
+                    Value {formatCurrency(pkg.totalOriginal)}
+                  </span>
+                ) : null}
+              </div>
             </article>
           ))}
         </div>

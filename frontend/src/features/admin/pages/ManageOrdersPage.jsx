@@ -1,6 +1,6 @@
 import React from "react";
 import { Table, Tag } from "antd";
-import AdminSidebar from "../components/AdminSidebar";
+import AdminLayout from "../components/AdminLayout";
 import "./AdminDashboardPage.css";
 
 const formatCurrency = (value) => `Rs ${Number(value || 0).toFixed(2)}`;
@@ -136,31 +136,17 @@ const columns = [
 
 const ManageOrdersPage = () => {
   return (
-    <div className="admin-dashboard">
-      <AdminSidebar />
-      <div className="dashboard-content">
-        <header className="dashboard-header">
-          <h1>Manage Orders</h1>
-          <div className="admin-profile">
-            <span>Live sync enabled</span>
-          </div>
-        </header>
-
-        <section className="dashboard-reports">
-          <h2>Recent Orders</h2>
-          <p style={{ color: "#64748b", marginBottom: 16 }}>
-            Track every order along with the associated product line items.
-          </p>
-          <Table
-            columns={columns}
-            dataSource={sampleOrders}
-            rowKey="orderId"
-            pagination={{ pageSize: 5 }}
-            scroll={{ x: 900 }}
-          />
-        </section>
-      </div>
-    </div>
+    <AdminLayout title="Manage Orders" subtitle="Track every order along with the associated product line items.">
+      <section className="dashboard-reports">
+        <Table
+          columns={columns}
+          dataSource={sampleOrders}
+          rowKey="orderId"
+          pagination={{ pageSize: 5 }}
+          scroll={{ x: 900 }}
+        />
+      </section>
+    </AdminLayout>
   );
 };
 

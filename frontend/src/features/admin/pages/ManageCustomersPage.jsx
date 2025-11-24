@@ -1,6 +1,6 @@
 import React from "react";
 import { Table, Tag } from "antd";
-import AdminSidebar from "../components/AdminSidebar";
+import AdminLayout from "../components/AdminLayout";
 import "./AdminDashboardPage.css";
 
 const customerStatusColor = {
@@ -79,27 +79,12 @@ const columns = [
 
 const ManageCustomersPage = () => {
   return (
-    <div className="admin-dashboard">
-      <AdminSidebar />
-      <div className="dashboard-content">
-        <header className="dashboard-header">
-          <h1>Manage Customers</h1>
-          <div className="admin-profile">
-            <span>CRM snapshot</span>
-          </div>
-        </header>
-
-        <section className="dashboard-reports">
-          <h2>Customer Directory</h2>
-          <Table
-            columns={columns}
-            dataSource={customers}
-            rowKey="id"
-            pagination={{ pageSize: 5 }}
-          />
-        </section>
-      </div>
-    </div>
+    <AdminLayout title="Manage Customers" subtitle="CRM snapshot">
+      <section className="dashboard-reports">
+        <h2>Customer Directory</h2>
+        <Table columns={columns} dataSource={customers} rowKey="id" pagination={{ pageSize: 5 }} />
+      </section>
+    </AdminLayout>
   );
 };
 

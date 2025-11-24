@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, message, Space, Table, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
-import AdminSidebar from "../components/AdminSidebar";
+import AdminLayout from "../components/AdminLayout";
 import { getProducts } from "../../../services/api";
 import "./AdminDashboardPage.css";
 
@@ -81,55 +81,41 @@ const StockManagerPage = () => {
   );
 
   return (
-    <div className="admin-dashboard">
-      <AdminSidebar />
-      <div className="dashboard-content">
-        <header className="dashboard-header">
-          <h1>Stock Manager</h1>
-          <div className="admin-profile" style={{ gap: 16 }}>
-            <div>
-              <strong>{dataSource.length}</strong> SKUs tracked
-            </div>
-            <div style={{ color: lowStock ? "#ef4444" : "#22c55e" }}>
-              {lowStock} low stock
-            </div>
-          </div>
-        </header>
+    <AdminLayout
+      title="Stock Manager"
+      subtitle={`${dataSource.length} SKUs tracked \u2022 ${lowStock} low stock`}
+    >
+      <section className="dashboard-reports">
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <p style={{ margin: 0, color: "#475569" }}>
+            Review inventory levels. Inventory adjustments remain managed within the product form to keep this view read-only.
+          </p>
+          <Space wrap>
+            <Button onClick={() => navigate("/admin/manage-quantity")}>Min Qty Settings</Button>
+            <Button onClick={() => navigate("/admin/products")}>Add Inventory</Button>
+            <Button type="primary" onClick={fetchProducts} loading={loading}>
+              Refresh
+            </Button>
+          </Space>
+        </div>
 
-        <section className="dashboard-reports">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: 12,
-              marginBottom: 16,
-            }}
-          >
-            <p style={{ margin: 0, color: "#475569" }}>
-              Review inventory levels. Inventory adjustments remain managed within the product form to keep this view read-only.
-            </p>
-            <Space wrap>
-              <Button onClick={() => navigate("/admin/manage-quantity")}>
-                Min Qty Settings
-              </Button>
-              <Button onClick={() => navigate("/admin/products")}>Add Inventory</Button>
-              <Button type="primary" onClick={fetchProducts} loading={loading}>
-                Refresh
-              </Button>
-            </Space>
-          </div>
-
-          <Table
-            columns={columns}
-            dataSource={dataSource}
-            loading={loading}
-            pagination={{ pageSize: 10 }}
-            scroll={{ x: 900 }}
-          />
-        </section>
-      </div>
-    </div>
+        <Table
+          columns={columns}
+          dataSource={dataSource}
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 900 }}
+        />
+      </section>
+    </AdminLayout>
   );
 };
 

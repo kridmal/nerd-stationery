@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Button, Modal, Form, Input, InputNumber, AutoComplete, message, Table, Tag, Space, Popconfirm } from "antd";
 import { getProducts, updateProductMinQuantity } from "../../../services/api";
 import { useNavigate } from "react-router-dom";
+import AdminLayout from "../components/AdminLayout";
 
 const ManageQuantityPage = () => {
   const [products, setProducts] = useState([]);
@@ -141,78 +142,79 @@ const ManageQuantityPage = () => {
   ];
 
   return (
-    <div style={{ padding: 30 }}>
-      <h2>Manage Quantity Level</h2>
-      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
-        <Button
-          type="primary"
-          onClick={() => {
-            setEditing(false);
-            form.resetFields();
-            setOpen(true);
-          }}
-        >
-          Set Quantity Level
-        </Button>
-      </div>
-
-      <Table
-        style={{ marginTop: 16 }}
-        columns={columns}
-        dataSource={dataWithMin}
-        rowKey="_id"
-        pagination={{ pageSize: 8 }}
-      />
-
-      <Modal
-        title="Set Minimum Quantity Level"
-        open={open}
-        onCancel={() => setOpen(false)}
-        footer={null}
-        destroyOnClose
-        centered
-      >
-        <Form form={form} layout="vertical" onFinish={handleSubmit} autoComplete="off">
-          <Form.Item label="Item Code" name="itemCode" rules={[{ required: true, message: "Item code is required" }]}>
-            {editing ? (
-              <Input readOnly />
-            ) : (
-              <AutoComplete
-                options={autoOptions}
-                onChange={handleItemCodeChange}
-                onSelect={handleItemCodeChange}
-                placeholder="Type item code"
-                filterOption={(inputValue, option) =>
-                  (option?.value || "").toLowerCase().includes((inputValue || "").toLowerCase())
-                }
-              />
-            )}
-          </Form.Item>
-
-          <Form.Item label="Product Name" name="productName">
-            <Input readOnly placeholder="Auto-filled by item code" />
-          </Form.Item>
-
-          <Form.Item
-            label="Minimum Quantity Level"
-            name="minQuantity"
-            rules={[{ required: true, message: "Minimum quantity is required" }]}
+    <AdminLayout title="Manage Quantity Level" subtitle="Set minimum stock thresholds">
+      <div style={{ padding: 10 }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+          <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
+          <Button
+            type="primary"
+            onClick={() => {
+              setEditing(false);
+              form.resetFields();
+              setOpen(true);
+            }}
           >
-            <InputNumber min={0} style={{ width: "100%" }} />
-          </Form.Item>
+            Set Quantity Level
+          </Button>
+        </div>
 
-          <Form.Item>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <Button onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={loading}>
-                Save
-              </Button>
-            </div>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+        <Table
+          style={{ marginTop: 16 }}
+          columns={columns}
+          dataSource={dataWithMin}
+          rowKey="_id"
+          pagination={{ pageSize: 8 }}
+        />
+
+        <Modal
+          title="Set Minimum Quantity Level"
+          open={open}
+          onCancel={() => setOpen(false)}
+          footer={null}
+          destroyOnClose
+          centered
+        >
+          <Form form={form} layout="vertical" onFinish={handleSubmit} autoComplete="off">
+            <Form.Item label="Item Code" name="itemCode" rules={[{ required: true, message: "Item code is required" }]}>
+              {editing ? (
+                <Input readOnly />
+              ) : (
+                <AutoComplete
+                  options={autoOptions}
+                  onChange={handleItemCodeChange}
+                  onSelect={handleItemCodeChange}
+                  placeholder="Type item code"
+                  filterOption={(inputValue, option) =>
+                    (option?.value || "").toLowerCase().includes((inputValue || "").toLowerCase())
+                  }
+                />
+              )}
+            </Form.Item>
+
+            <Form.Item label="Product Name" name="productName">
+              <Input readOnly placeholder="Auto-filled by item code" />
+            </Form.Item>
+
+            <Form.Item
+              label="Minimum Quantity Level"
+              name="minQuantity"
+              rules={[{ required: true, message: "Minimum quantity is required" }]}
+            >
+              <InputNumber min={0} style={{ width: "100%" }} />
+            </Form.Item>
+
+            <Form.Item>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <Button onClick={() => setOpen(false)}>Cancel</Button>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  Save
+                </Button>
+              </div>
+            </Form.Item>
+          </Form>
+        </Modal>
+      </div>
+    </AdminLayout>
   );
 };
 

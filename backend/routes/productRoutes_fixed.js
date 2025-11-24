@@ -1,6 +1,6 @@
 import express from "express";
 import Product from "../models/Product.js";
-import authAdmin from "../middleware/authAdmin.js";
+import authAdmin, { requireRootAdmin } from "../middleware/authAdmin.js";
 import upload from "../middleware/upload.js";
 import {
   createProduct,
@@ -32,8 +32,8 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Activity logs (admin only)
-router.get("/activity", authAdmin, getProductActivities);
+// Activity logs (root admin only)
+router.get("/activity", authAdmin, requireRootAdmin, getProductActivities);
 
 // Add Product (admin only)
 router.post(

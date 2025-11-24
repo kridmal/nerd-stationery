@@ -17,7 +17,7 @@
   justify-content: space-between;
   align-items: center;
   background-color: #ffffff;
-  padding: 15px 25px;
+  padding: 18px 24px;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -28,10 +28,22 @@
   font-weight: 600;
 }
 
+.header-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashboard-subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
 .admin-profile {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 .admin-profile img {
@@ -43,6 +55,48 @@
 .admin-profile span {
   font-weight: 500;
   color: #444;
+}
+
+.admin-profile.rich {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.admin-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+.admin-role {
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.admin-name {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.admin-email {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.dashboard-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.logout-btn.inline {
+  align-self: center;
+  padding: 10px 14px;
 }
 
 .dashboard-overview {

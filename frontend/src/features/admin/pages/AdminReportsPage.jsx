@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, Col, Row, Table, Tag } from "antd";
-import AdminSidebar from "../components/AdminSidebar";
+import AdminLayout from "../components/AdminLayout";
 import "./AdminDashboardPage.css";
 
 const kpis = [
@@ -26,36 +26,26 @@ const reportRows = [
 
 const AdminReportsPage = () => {
   return (
-    <div className="admin-dashboard">
-      <AdminSidebar />
-      <div className="dashboard-content">
-        <header className="dashboard-header">
-          <h1>Reports</h1>
-          <div className="admin-profile">
-            <span>Auto-generated nightly</span>
-          </div>
-        </header>
+    <AdminLayout title="Reports" subtitle="Auto-generated nightly">
+      <section className="dashboard-overview" style={{ marginTop: 24 }}>
+        {kpis.map((item) => (
+          <Card key={item.label} bordered={false} style={{ borderRadius: 12 }}>
+            <p style={{ color: "#94a3b8", marginBottom: 4 }}>{item.label}</p>
+            <h2 style={{ margin: 0 }}>{item.value}</h2>
+            <small style={{ color: "#16a34a" }}>{item.trend}</small>
+          </Card>
+        ))}
+      </section>
 
-        <section className="dashboard-overview" style={{ marginTop: 24 }}>
-          {kpis.map((item) => (
-            <Card key={item.label} bordered={false} style={{ borderRadius: 12 }}>
-              <p style={{ color: "#94a3b8", marginBottom: 4 }}>{item.label}</p>
-              <h2 style={{ margin: 0 }}>{item.value}</h2>
-              <small style={{ color: "#16a34a" }}>{item.trend}</small>
-            </Card>
-          ))}
-        </section>
-
-        <section className="dashboard-reports">
-          <Row gutter={[16, 16]}>
-            <Col span={24}>
-              <h2>Scheduled Reports</h2>
-              <Table columns={reportColumns} dataSource={reportRows} pagination={false} />
-            </Col>
-          </Row>
-        </section>
-      </div>
-    </div>
+      <section className="dashboard-reports">
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <h2>Scheduled Reports</h2>
+            <Table columns={reportColumns} dataSource={reportRows} pagination={false} />
+          </Col>
+        </Row>
+      </section>
+    </AdminLayout>
   );
 };
 

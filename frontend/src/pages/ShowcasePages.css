@@ -65,9 +65,28 @@
   color: #4a4a4a;
 }
 
-.package-card--wide span {
-  font-weight: 600;
+.package-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.package-card__price {
+  font-weight: 700;
   color: #1a73e8;
+  letter-spacing: 0.2px;
+}
+
+.package-card__value {
+  font-weight: 600;
+  color: #475569;
+  background: #eef2ff;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.95rem;
 }
 
 @media (max-width: 1200px) {

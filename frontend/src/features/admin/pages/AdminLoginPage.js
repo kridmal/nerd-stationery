@@ -34,6 +34,12 @@ const logoPlaceholder =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='60' viewBox='0 0 220 60'%3E%3Crect width='220' height='60' rx='12' fill='%23071B3F'/%3E%3Ctext x='50%' y='50%' fill='%23F8F9FF' font-family='Manrope, Arial, sans-serif' font-size='18' font-weight='700' text-anchor='middle' dominant-baseline='middle'%3ENERD%20STATIONERY%3C/text%3E%3C/svg%3E";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const adminRoles = ["root_admin", "manager_admin", "admin"];
+const normalizeAdminRole = (role) => {
+  if (role === "root_admin" || role === "Root Admin") return "root_admin";
+  if (role === "manager_admin" || role === "admin") return "manager_admin";
+  return role;
+};
 
 const AdminLoginPage = () => {
   const theme = useTheme();
@@ -86,18 +92,28 @@ const AdminLoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://54.179.149.89:5000/api/auth/login", {
-        email,
-        password,
-      });
+      const response = await axios.post(
+        "http://54.179.149.89:5000/api/auth/login",
+        {
+          email,
+          password,
+        },
+        {
+          headers: { "x-admin-portal": "true" },
+        }
+      );
 
-      if (response.data.user?.role !== "admin") {
+      const normalizedRole = normalizeAdminRole(response.data.user?.role);
+      if (!adminRoles.includes(normalizedRole)) {
         setGeneralError("You are not authorized to access the admin portal.");
         return;
       }
 
       localStorage.setItem("adminToken", response.data.token);
-      localStorage.setItem("adminInfo", JSON.stringify(response.data.user));
+      localStorage.setItem(
+        "adminInfo",
+        JSON.stringify({ ...response.data.user, role: normalizedRole })
+      );
 
       if (rememberMe) {
         localStorage.setItem("adminRememberEmail", email);

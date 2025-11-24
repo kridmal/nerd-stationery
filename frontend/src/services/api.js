@@ -25,6 +25,47 @@ export const getProducts = async () => {
   }
 };
 
+// Packages APIs
+export const getPackages = async () => {
+  try {
+    const res = await API.get("/packages");
+    return res.data || [];
+  } catch (error) {
+    console.error("Error fetching packages:", error);
+    return [];
+  }
+};
+
+export const createPackage = async (payload) => {
+  try {
+    const res = await API.post("/packages", payload);
+    return res.data;
+  } catch (error) {
+    console.error("Error creating package:", error);
+    throw error;
+  }
+};
+
+export const updatePackage = async (id, payload) => {
+  try {
+    const res = await API.put(`/packages/${id}`, payload);
+    return res.data;
+  } catch (error) {
+    console.error("Error updating package:", error);
+    throw error;
+  }
+};
+
+export const deletePackage = async (id) => {
+  try {
+    const res = await API.delete(`/packages/${id}`);
+    return res.data;
+  } catch (error) {
+    console.error("Error deleting package:", error);
+    throw error;
+  }
+};
+
 export const addProduct = async (productData) => {
   try {
     const isFormData =
@@ -70,6 +111,9 @@ export const getProductActivities = async (params = {}) => {
     const res = await API.get("/products/activity", { params });
     return res.data;
   } catch (error) {
+    if (error?.response?.status === 403) {
+      throw new Error(error?.response?.data?.message || "Access denied");
+    }
     console.error("Error fetching product activities:", error);
     return [];
   }
@@ -151,6 +195,31 @@ export const createOrder = async (payload) => {
   return res.data;
 };
 
+// Admin management
+export const getCurrentAdmin = async () => {
+  const res = await API.get("/admins/me");
+  return res.data?.admin;
+};
+
+export const listAdmins = async () => {
+  const res = await API.get("/admins");
+  return res.data?.admins || [];
+};
+
+export const createAdminAccount = async (payload) => {
+  const res = await API.post("/admins", payload);
+  return res.data?.admin;
+};
+
+export const resetAdminPassword = async (id, newPassword) => {
+  const res = await API.patch(`/admins/${id}/password`, { newPassword });
+  return res.data;
+};
+
+export const deleteAdminAccount = async (id) => {
+  const res = await API.delete(`/admins/${id}`);
+  return res.data;
+};
 
 export default API;
 
@@ -163,9 +232,9 @@ API.interceptors.response.use(
     const msg = String(error?.response?.data?.message || "").toLowerCase();
     const isAuthError =
       status === 401 ||
-      status === 403 ||
       msg.includes("invalid token") ||
-      msg.includes("jwt");
+      msg.includes("jwt") ||
+      msg.includes("token expired");
     if (isAuthError) {
       try {
         localStorage.removeItem("adminToken");

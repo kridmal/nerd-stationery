@@ -1,9 +1,14 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import {
+  normalizeAdminRole,
+  sanitizeUserForResponse,
+  isAdminRole,
+} from "../utils/roles.js";
 
 // Generate JWT
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "1d" });
+const generateToken = (userId, role) => {
+  return jwt.sign({ id: userId, role }, process.env.JWT_SECRET, { expiresIn: "1d" });
 };
 
 // Register user (supports admin role)
@@ -14,15 +19,16 @@ export const registerUser = async (req, res) => {
     if (userExists)
       return res.status(400).json({ message: "User already exists" });
 
+    const normalizedRole = normalizeAdminRole(role || "customer");
     const user = await User.create({
       name,
       email,
       password,
-      role: role || "customer",
+      role: normalizedRole,
     });
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, normalizedRole);
 
-    res.status(201).json({ token, user });
+    res.status(201).json({ token, user: sanitizeUserForResponse(user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -40,8 +46,22 @@ export const loginUser = async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    const token = generateToken(user._id);
-    res.json({ token, user });
+    const normalizedRole = normalizeAdminRole(user.role);
+    const token = generateToken(user._id, normalizedRole);
+    const responseUser = sanitizeUserForResponse({
+      ...user.toObject(),
+      role: normalizedRole,
+    });
+
+    // Prevent non-admins from using the admin portal
+    const isAdminLogin = req.originalUrl?.includes("/auth/login");
+    if (isAdminLogin && req.headers["x-admin-portal"] && !isAdminRole(normalizedRole)) {
+      return res
+        .status(403)
+        .json({ message: "You are not authorized to access the admin portal." });
+    }
+
+    res.json({ token, user: responseUser });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

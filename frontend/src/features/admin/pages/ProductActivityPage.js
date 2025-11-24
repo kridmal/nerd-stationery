@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Table, Button, Input, message, Space, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import { getProductActivities } from "../../../services/api";
-import AdminSidebar from "../components/AdminSidebar";
+import AdminLayout from "../components/AdminLayout";
+import useAdminSession from "../hooks/useAdminSession";
 import "./AdminDashboardPage.css";
 
 const formatChangedValue = (value) => {
@@ -45,6 +46,7 @@ const ProductActivityPage = () => {
   const [loading, setLoading] = useState(false);
   const [productIdFilter, setProductIdFilter] = useState("");
   const [itemCodeFilter, setItemCodeFilter] = useState("");
+  const { isRootAdmin } = useAdminSession();
 
   const fetchActivityLogs = useCallback(async () => {
     try {
@@ -55,15 +57,24 @@ const ProductActivityPage = () => {
       const data = await getProductActivities(params);
       setActivities(Array.isArray(data) ? data : []);
     } catch (error) {
-      message.error("Failed to load activity logs.");
+      const fallback = error?.message || "Failed to load activity logs.";
+      message.error(fallback);
+      if (fallback.toLowerCase().includes("root")) {
+        navigate("/admin-dashboard");
+      }
     } finally {
       setLoading(false);
     }
-  }, [productIdFilter, itemCodeFilter]);
+  }, [productIdFilter, itemCodeFilter, navigate]);
 
   useEffect(() => {
-    fetchActivityLogs();
-  }, [fetchActivityLogs]);
+    if (isRootAdmin) {
+      fetchActivityLogs();
+    } else {
+      message.warning("Activity logs are only visible to root admins.");
+      navigate("/admin-dashboard");
+    }
+  }, [fetchActivityLogs, isRootAdmin, navigate]);
 
   const clearFilters = () => {
     setProductIdFilter("");
@@ -137,56 +148,50 @@ const ProductActivityPage = () => {
   ];
 
   return (
-    <div className="admin-dashboard">
-      <AdminSidebar />
-      <div className="dashboard-content">
-        <header className="dashboard-header">
-          <h1>Activity Logs</h1>
-          <div className="admin-profile">
-            <span>Product audit trail</span>
+    <AdminLayout title="Activity Logs" subtitle="Product audit trail">
+      <section className="dashboard-reports">
+        <Space
+          style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}
+        >
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
+            <Button type="primary" onClick={fetchActivityLogs} loading={loading} disabled={!isRootAdmin}>
+              Refresh
+            </Button>
           </div>
-        </header>
-
-        <section className="dashboard-reports">
-          <Space
-            style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}
-          >
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
-              <Button type="primary" onClick={fetchActivityLogs} loading={loading}>
-                Refresh
-              </Button>
-            </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Input
-                placeholder="Filter by Product ID"
-                value={productIdFilter}
-                onChange={(e) => setProductIdFilter(e.target.value)}
-                style={{ minWidth: 200 }}
-              />
-              <Input
-                placeholder="Filter by Item Code"
-                value={itemCodeFilter}
-                onChange={(e) => setItemCodeFilter(e.target.value)}
-                style={{ minWidth: 200 }}
-              />
-              <Button onClick={fetchActivityLogs} type="default">
-                Apply Filters
-              </Button>
-              <Button onClick={clearFilters}>Clear</Button>
-            </div>
-          </Space>
-          <Table
-            columns={columns}
-            dataSource={activities}
-            rowKey="_id"
-            loading={loading}
-            pagination={{ pageSize: 10 }}
-            scroll={{ x: 1000 }}
-          />
-        </section>
-      </div>
-    </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <Input
+              placeholder="Filter by Product ID"
+              value={productIdFilter}
+              onChange={(e) => setProductIdFilter(e.target.value)}
+              style={{ minWidth: 200 }}
+              disabled={!isRootAdmin}
+            />
+            <Input
+              placeholder="Filter by Item Code"
+              value={itemCodeFilter}
+              onChange={(e) => setItemCodeFilter(e.target.value)}
+              style={{ minWidth: 200 }}
+              disabled={!isRootAdmin}
+            />
+            <Button onClick={fetchActivityLogs} type="default" disabled={!isRootAdmin}>
+              Apply Filters
+            </Button>
+            <Button onClick={clearFilters} disabled={!isRootAdmin}>
+              Clear
+            </Button>
+          </div>
+        </Space>
+        <Table
+          columns={columns}
+          dataSource={activities}
+          rowKey="_id"
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: 1000 }}
+        />
+      </section>
+    </AdminLayout>
   );
 };
 

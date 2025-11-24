@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Table,
   Button,
@@ -24,6 +24,7 @@ import {
   getCategories,
 } from "../../../services/api";
 import { useNavigate } from "react-router-dom";
+import AdminLayout from "../components/AdminLayout";
 
 const clamp = (value, min = 0, max = Number.POSITIVE_INFINITY) => {
   const num = Number(value);
@@ -124,6 +125,15 @@ const AdminProductsPage = () => {
   const [previewImage, setPreviewImage] = useState(null);
   const discountTypeWatch = normalizeDiscountType(Form.useWatch("discountType", form) || "none");
   const navigate = useNavigate();
+
+  const itemCodeOptions = useMemo(
+    () =>
+      (products || [])
+        .map((p) => p?.itemCode ?? p?.productCode ?? "")
+        .filter(Boolean)
+        .map((code) => ({ value: code })),
+    [products]
+  );
 
   const fetchProducts = async () => {
     try {
@@ -434,65 +444,61 @@ const AdminProductsPage = () => {
     },
   ];
 
-  return (
-    <div style={{ padding: "30px" }}>
-      <h2>Manage Products</h2>
+  const actionBar = (
+    <div
+      style={{
+        marginBottom: 16,
+        display: "flex",
+        gap: "10px",
+        alignItems: "center",
+        flexWrap: "wrap",
+      }}
+    >
+      <Button onClick={() => navigate("/admin-dashboard")}>Back to Dashboard</Button>
 
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          gap: "10px",
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <Button onClick={() => navigate("/admin-dashboard")}>Back to Dashboard</Button>
+      <Button type="primary" onClick={handleAddProduct}>
+        Add Product
+      </Button>
 
-        <Button type="primary" onClick={handleAddProduct}>
-          Add Product
-        </Button>
+      <Button onClick={fetchProducts}>Refresh</Button>
 
-        <Button onClick={fetchProducts}>Refresh</Button>
+      <Button type="dashed" onClick={() => navigate("/admin/categories")}>
+        Manage Categories
+      </Button>
 
-        <Button type="dashed" onClick={() => navigate("/admin/categories")}>
-          Manage Categories
-        </Button>
+      <Button onClick={() => navigate("/admin/manage-quantity")}>Manage Quantity</Button>
+      <Button onClick={() => navigate("/admin/products/activity")}>Activity Table</Button>
 
-        <Button onClick={() => navigate("/admin/manage-quantity")}>Manage Quantity</Button>
-        <Button onClick={() => navigate("/admin/new-arrivals")}>New Arrivals</Button>
-        <Button onClick={() => navigate("/admin/products/activity")}>
-          Activity Table
-        </Button>
-
-        <div style={{ marginLeft: "auto", minWidth: "250px" }}>
-          <AutoComplete
-            style={{ width: "100%" }}
-            options={suggestions}
-            value={searchValue}
-            onChange={setSearchValue}
-            placeholder="Search by item code, name or category..."
-            onSelect={(value) => {
-              const v = String(value || "").toLowerCase();
-              const matched = products.filter((p) => {
-                const name = (p?.name || "").toLowerCase();
-                const category = (p?.category || "").toLowerCase();
-                const code = (p?.itemCode ?? p?.productCode ?? "").toString().toLowerCase();
-                return name === v || category === v || code === v;
-              });
-              setFilteredProducts(matched);
-            }}
-            allowClear
-          />
-        </div>
+      <div style={{ marginLeft: "auto", minWidth: "250px" }}>
+        <AutoComplete
+          style={{ width: "100%" }}
+          options={suggestions}
+          value={searchValue}
+          onChange={setSearchValue}
+          placeholder="Search by item code, name or category..."
+          onSelect={(value) => {
+            const v = String(value || "").toLowerCase();
+            const matched = products.filter((p) => {
+              const name = (p?.name || "").toLowerCase();
+              const category = (p?.category || "").toLowerCase();
+              const code = (p?.itemCode ?? p?.productCode ?? "").toString().toLowerCase();
+              return name === v || category === v || code === v;
+            });
+            setFilteredProducts(matched);
+          }}
+          allowClear
+        />
       </div>
+    </div>
+  );
 
-      <Table
-        columns={columns}
-        dataSource={filteredProducts}
-        rowKey="_id"
-        pagination={{ pageSize: 6 }}
-      />
+  return (
+    <AdminLayout
+      title="Manage Products"
+      subtitle="Create, update, and track inventory across the catalog"
+      actions={actionBar}
+    >
+      <Table columns={columns} dataSource={filteredProducts} rowKey="_id" pagination={{ pageSize: 6 }} />
 
       <Modal
         title={editingProduct ? "Edit Product" : "Add Product"}
@@ -517,7 +523,14 @@ const AdminProductsPage = () => {
             label="Item Code"
             rules={[{ required: true, message: "Please enter item code" }]}
           >
-            <Input placeholder="Enter item code" disabled={!!editingProduct} />
+            <AutoComplete
+              options={itemCodeOptions}
+              placeholder="Enter item code"
+              disabled={!!editingProduct}
+              filterOption={(inputValue, option) =>
+                (option?.value || "").toUpperCase().includes((inputValue || "").toUpperCase())
+              }
+            />
           </Form.Item>
 
           <Form.Item
@@ -783,7 +796,7 @@ const AdminProductsPage = () => {
           />
         )}
       </Modal>
-    </div>
+    </AdminLayout>
   );
 };
 

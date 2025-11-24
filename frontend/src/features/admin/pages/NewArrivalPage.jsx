@@ -13,6 +13,7 @@ import {
 } from "antd";
 import { getProducts } from "../../../services/api";
 import { useNavigate } from "react-router-dom";
+import AdminLayout from "../components/AdminLayout";
 
 const storageKey = "newArrivals";
 
@@ -216,96 +217,115 @@ const NewArrivalPage = () => {
   ];
 
   return (
-    <div style={{ padding: 30 }}>
-      <h2>New Arrivals</h2>
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center", flexWrap: "wrap" }}>
-        <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
-        <Button type="primary" onClick={openAdd}>Add New Arrival Product</Button>
+    <AdminLayout title="New Arrivals" subtitle="Feature spotlighted products for the store">
+      <div style={{ padding: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 16,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
+          <Button type="primary" onClick={openAdd}>
+            Add New Arrival Product
+          </Button>
+        </div>
+
+        <Table columns={columns} dataSource={arrivals} rowKey={(r) => r.id} pagination={{ pageSize: 8 }} />
+
+        <Modal
+          title={editing != null ? "Edit New Arrival" : "Add New Arrival"}
+          open={open}
+          onCancel={() => {
+            setOpen(false);
+            setEditing(null);
+            form.resetFields();
+          }}
+          footer={null}
+          destroyOnClose
+          centered
+        >
+          <Form form={form} layout="vertical" onFinish={handleSubmit} autoComplete="off">
+            <Form.Item label="Item Code" name="itemCode" rules={[{ required: true, message: "Item code is required" }]}>
+              <AutoComplete
+                options={autoOptions}
+                onChange={onItemCodeChange}
+                onSelect={onItemCodeChange}
+                placeholder="Type item code"
+                disabled={editing != null}
+                filterOption={(inputValue, option) =>
+                  (option?.value || "").toLowerCase().includes((inputValue || "").toLowerCase())
+                }
+              />
+            </Form.Item>
+
+            <Form.Item label="Product Name" name="name" rules={[{ required: true, message: "Product name is required" }]}>
+              <Input />
+            </Form.Item>
+
+            <Form.Item label="Short Description" name="shortDescription">
+              <Input.TextArea rows={2} />
+            </Form.Item>
+
+            <Form.Item
+              label="Final Price"
+              name="finalPrice"
+              rules={[{ required: true, message: "Final price is required" }]}
+            >
+              <InputNumber min={0} style={{ width: "100%" }} disabled />
+            </Form.Item>
+
+            <Form.Item label="Original Price" name="originalPrice">
+              <InputNumber min={0} style={{ width: "100%" }} disabled />
+            </Form.Item>
+
+            <Form.Item label="Category" name="category" rules={[{ required: true, message: "Category is required" }]}>
+              <Input />
+            </Form.Item>
+
+            <Form.Item label="Sub Category" name="subcategory" rules={[{ required: true, message: "Subcategory is required" }]}>
+              <Input />
+            </Form.Item>
+
+            <Form.Item label="Discount Status" name="discountStatus">
+              <Input readOnly placeholder="Auto-filled from product discount" />
+            </Form.Item>
+
+            <Form.Item label="Brand" name="brand">
+              <Input />
+            </Form.Item>
+
+            <Form.Item label="Size" name="size">
+              <Input />
+            </Form.Item>
+
+            <Form.Item label="Color" name="color">
+              <Input />
+            </Form.Item>
+
+            <Form.Item>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <Button
+                  onClick={() => {
+                    setOpen(false);
+                    setEditing(null);
+                    form.resetFields();
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  Save
+                </Button>
+              </div>
+            </Form.Item>
+          </Form>
+        </Modal>
       </div>
-
-      <Table columns={columns} dataSource={arrivals} rowKey={(r) => r.id} pagination={{ pageSize: 8 }} />
-
-      <Modal
-        title={editing != null ? "Edit New Arrival" : "Add New Arrival"}
-        open={open}
-        onCancel={() => {
-          setOpen(false);
-          setEditing(null);
-          form.resetFields();
-        }}
-        footer={null}
-        destroyOnClose
-        centered
-      >
-        <Form form={form} layout="vertical" onFinish={handleSubmit} autoComplete="off">
-          <Form.Item label="Item Code" name="itemCode" rules={[{ required: true, message: "Item code is required" }]}>
-            <AutoComplete
-              options={autoOptions}
-              onChange={onItemCodeChange}
-              onSelect={onItemCodeChange}
-              placeholder="Type item code"
-              disabled={editing != null}
-              filterOption={(inputValue, option) =>
-                (option?.value || "").toLowerCase().includes((inputValue || "").toLowerCase())
-              }
-            />
-          </Form.Item>
-
-          <Form.Item label="Product Name" name="name" rules={[{ required: true, message: "Product name is required" }]}>
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Short Description" name="shortDescription">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-
-          <Form.Item
-            label="Final Price"
-            name="finalPrice"
-            rules={[{ required: true, message: "Final price is required" }]}
-          >
-            <InputNumber min={0} style={{ width: "100%" }} disabled />
-          </Form.Item>
-
-          <Form.Item label="Original Price" name="originalPrice">
-            <InputNumber min={0} style={{ width: "100%" }} disabled />
-          </Form.Item>
-
-          <Form.Item label="Category" name="category" rules={[{ required: true, message: "Category is required" }]}>
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Sub Category" name="subcategory" rules={[{ required: true, message: "Subcategory is required" }]}>
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Discount Status" name="discountStatus">
-            <Input readOnly placeholder="Auto-filled from product discount" />
-          </Form.Item>
-
-          <Form.Item label="Brand" name="brand">
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Size" name="size">
-            <Input />
-          </Form.Item>
-
-          <Form.Item label="Color" name="color">
-            <Input />
-          </Form.Item>
-
-          <Form.Item>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <Button onClick={() => { setOpen(false); setEditing(null); form.resetFields(); }}>Cancel</Button>
-              <Button type="primary" htmlType="submit" loading={loading}>
-                Save
-              </Button>
-            </div>
-          </Form.Item>
-        </Form>
-      </Modal>
-    </div>
+    </AdminLayout>
   );
 };
 
