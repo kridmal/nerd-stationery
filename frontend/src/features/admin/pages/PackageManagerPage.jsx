@@ -208,10 +208,11 @@ const PackageManagerPage = () => {
     [packages]
   );
 
-  const lineItemsWatch = Form.useWatch("lineItems", form) || [];
+  const lineItemsWatch = Form.useWatch("lineItems", form);
+  const safeLineItems = useMemo(() => lineItemsWatch || [], [lineItemsWatch]);
   const packageOriginalValue = useMemo(
-    () => computePackageOriginalValue(lineItemsWatch),
-    [lineItemsWatch]
+    () => computePackageOriginalValue(safeLineItems),
+    [safeLineItems]
   );
 
   const loadProducts = async () => {
