@@ -23,6 +23,7 @@ import {
   EditOutlined,
   MinusCircleOutlined,
 } from "@ant-design/icons";
+import { Modal as AntdModal } from "antd";
 import AdminLayout from "../components/AdminLayout";
 import {
   getProducts,
@@ -125,21 +126,23 @@ const syncLineWithProduct = (line, product) => {
 };
 
 const mapPackageToForm = (pkg) => {
-  const lineItems = normalizePackageLineItems(pkg).map((item) => ({
-    tempId: item.tempId || createTempId(),
-    itemCode: item.itemCode || item.code || "",
-    productId: item.productId,
-    productName: item.productName || item.name || "",
-    shortDescription: item.shortDescription || "",
-    originalPrice: toNumber(item.originalPrice ?? item.price, 0),
-    quantity: toNumber(item.quantity, 0) || 1,
-    brand: item.brand || "",
-    size: item.size || "",
-    color: item.color || "",
-    sku: item.sku || "",
-    hasVariants:
-      item.hasVariants || Boolean(item.sku || item.brand || item.size || item.color),
-  }));
+  const lineItems = normalizePackageLineItems(pkg)
+    .filter(Boolean)
+    .map((item) => ({
+      tempId: item.tempId || createTempId(),
+      itemCode: item.itemCode || item.code || "",
+      productId: item.productId,
+      productName: item.productName || item.name || "",
+      shortDescription: item.shortDescription || "",
+      originalPrice: toNumber(item.originalPrice ?? item.price, 0),
+      quantity: toNumber(item.quantity, 0) || 1,
+      brand: item.brand || "",
+      size: item.size || "",
+      color: item.color || "",
+      sku: item.sku || "",
+      hasVariants:
+        item.hasVariants || Boolean(item.sku || item.brand || item.size || item.color),
+    }));
 
   return {
     packageCode: pkg?.packageCode || pkg?.code || "",
@@ -379,22 +382,27 @@ const PackageManagerPage = () => {
   };
 
   const handleDelete = async (id) => {
-    const confirmed = window.confirm(
-      "Delete this package? This action cannot be undone."
-    );
-    if (!confirmed) return;
-    try {
-      setSaving(true);
-      await deletePackageApi(id);
-      message.success("Package deleted.");
-      await loadPackages();
-    } catch (error) {
-      const msg =
-        error?.response?.data?.message || error?.message || "Unable to delete package.";
-      message.error(msg);
-    } finally {
-      setSaving(false);
-    }
+    AntdModal.confirm({
+      title: "Delete this package?",
+      content: "This action cannot be undone.",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      onOk: async () => {
+        try {
+          setSaving(true);
+          await deletePackageApi(id);
+          message.success("Package deleted.");
+          await loadPackages();
+        } catch (error) {
+          const msg =
+            error?.response?.data?.message || error?.message || "Unable to delete package.";
+          message.error(msg);
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   };
 
   const columns = [
@@ -529,7 +537,7 @@ const PackageManagerPage = () => {
             {(fields, { remove }) => (
               <Space direction="vertical" style={{ width: "100%" }} size="large">
                 {fields.map((field, idx) => {
-                  const line = lineItemsWatch[idx] || {};
+                  const line = safeLineItems[idx] || {};
                   const product = findProduct(line.itemCode);
                   const lineTotal = computePackageLineTotal(line);
                   return (
@@ -600,11 +608,13 @@ const PackageManagerPage = () => {
                             <Select
                               showSearch
                               placeholder="Select SKU"
-                              options={product.variants.map((variant, variantIdx) => ({
-                                label: variantLabel(variant),
-                                value: variant?.sku,
-                                key: variant?.sku || variantIdx,
-                              }))}
+                              options={(Array.isArray(product?.variants) ? product.variants : [])
+                                .filter(Boolean)
+                                .map((variant, variantIdx) => ({
+                                  label: variantLabel(variant),
+                                  value: variant?.sku,
+                                  key: variant?.sku || variantIdx,
+                                }))}
                               optionFilterProp="label"
                               onChange={(val) => handleSkuChange(idx, val)}
                               value={line?.sku}

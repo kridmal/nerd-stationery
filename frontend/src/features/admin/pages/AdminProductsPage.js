@@ -32,6 +32,63 @@ const clamp = (value, min = 0, max = Number.POSITIVE_INFINITY) => {
   return Math.min(Math.max(num, min), max);
 };
 
+const COLOR_OPTIONS = [
+  { name: "Red", hex: "#FF0000" },
+  { name: "Crimson", hex: "#DC143C" },
+  { name: "Ruby", hex: "#E0115F" },
+  { name: "Maroon", hex: "#800000" },
+
+  { name: "Orange", hex: "#FFA500" },
+  { name: "Coral", hex: "#FF7F50" },
+  { name: "Amber", hex: "#FFBF00" },
+  { name: "Burnt Orange", hex: "#CC5500" },
+
+  { name: "Yellow", hex: "#FFFF00" },
+  { name: "Gold", hex: "#FFD700" },
+  { name: "Mustard", hex: "#FFDB58" },
+  { name: "Lemon", hex: "#FFF44F" },
+
+  { name: "Green", hex: "#008000" },
+  { name: "Lime", hex: "#00FF00" },
+  { name: "Emerald", hex: "#50C878" },
+  { name: "Teal", hex: "#008080" },
+
+  { name: "Blue", hex: "#0000FF" },
+  { name: "Sky Blue", hex: "#87CEEB" },
+  { name: "Royal Blue", hex: "#4169E1" },
+  { name: "Navy", hex: "#000080" },
+
+  { name: "Purple", hex: "#800080" },
+  { name: "Lavender", hex: "#E6E6FA" },
+  { name: "Violet", hex: "#8A2BE2" },
+  { name: "Magenta", hex: "#FF00FF" },
+
+  { name: "Black", hex: "#000000" },
+  { name: "Dark Grey", hex: "#333333" },
+  { name: "Grey", hex: "#808080" },
+  { name: "Light Grey", hex: "#D3D3D3" },
+  { name: "Silver Grey", hex: "#C0C0C0" },
+  { name: "Ash Grey", hex: "#B2BEB5" },
+  { name: "Charcoal", hex: "#36454F" },
+
+  { name: "White", hex: "#FFFFFF" },
+  { name: "Ivory", hex: "#FFFFF0" },
+  { name: "Snow", hex: "#FFFAFA" },
+  { name: "Beige", hex: "#F5F5DC" },
+
+  { name: "Pink", hex: "#FFC0CB" },
+  { name: "Hot Pink", hex: "#FF69B4" },
+  { name: "Rose", hex: "#FF007F" },
+  { name: "Blush", hex: "#FEC5E5" },
+
+  { name: "Brown", hex: "#A52A2A" },
+  { name: "Dark Brown", hex: "#654321" },
+  { name: "Light Brown", hex: "#C4A484" },
+  { name: "Tan", hex: "#D2B48C" },
+  { name: "Chocolate", hex: "#7B3F00" },
+  { name: "Coffee", hex: "#6F4E37" },
+];
+
 const normalizeDiscountType = (type) => {
   if (!type) return "none";
   return ["none", "percentage", "fixed"].includes(type) ? type : "none";
@@ -454,8 +511,6 @@ const AdminProductsPage = () => {
         flexWrap: "wrap",
       }}
     >
-      <Button onClick={() => navigate("/admin-dashboard")}>Back to Dashboard</Button>
-
       <Button type="primary" onClick={handleAddProduct}>
         Add Product
       </Button>
@@ -624,7 +679,33 @@ const AdminProductsPage = () => {
                         <Input placeholder="Size" />
                       </Form.Item>
                       <Form.Item {...rest} name={[name, "color"]} label="Color">
-                        <Input placeholder="Color" />
+                        <Select
+                          showSearch
+                          placeholder="Select color"
+                          optionFilterProp="label"
+                          allowClear
+                          filterOption={(input, option) =>
+                            (option?.label || "").toLowerCase().includes((input || "").toLowerCase())
+                          }
+                        >
+                          {COLOR_OPTIONS.map((color) => (
+                            <Select.Option key={color.name} value={color.name} label={color.name}>
+                              <Space size={8}>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    width: 14,
+                                    height: 14,
+                                    borderRadius: 4,
+                                    background: color.hex,
+                                    border: "1px solid #e5e7eb",
+                                  }}
+                                />
+                                <span>{color.name}</span>
+                              </Space>
+                            </Select.Option>
+                          ))}
+                        </Select>
                       </Form.Item>
                       <Form.Item
                         {...rest}

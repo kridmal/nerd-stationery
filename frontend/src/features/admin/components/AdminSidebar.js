@@ -13,6 +13,12 @@ const menuItems = [
   { label: "Manage Orders", path: "/admin/orders" },
   { label: "Manage Customers", path: "/admin/customers" },
   { label: "Stock Manager", path: "/admin/stock-manager" },
+  {
+    label: "Alert Settings",
+    path: "/admin/alert-settings",
+    matchPaths: ["/admin/alert-settings", "/admin/manage-quantity"],
+    requiresRoot: true,
+  },
   { label: "Report", path: "/admin/reports" },
   {
     label: "Activity Logs",

@@ -63,6 +63,73 @@ const valuesAreEqual = (a, b) => {
   return normalizedA === normalizedB;
 };
 
+const isDataUriImage = (value) => typeof value === "string" && value.startsWith("data:image/");
+const isLikelyImageUrl = (value) => {
+  if (typeof value !== "string") return false;
+  const normalized = value.split("?")[0] || value;
+  return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(normalized);
+};
+
+const extractImageName = (value) => {
+  if (!value || typeof value !== "string") return "image";
+  if (isDataUriImage(value)) {
+    const match = value.match(/^data:image\/([a-zA-Z0-9.+-]+);/);
+    const rawExt = match?.[1] || "png";
+    const ext = rawExt.replace("jpeg", "jpg");
+    return `image.${ext}`;
+  }
+  const normalized = value.split("?")[0] || value;
+  const parts = normalized.split("/");
+  return parts.pop() || "image";
+};
+
+const formatImageLink = (value) => ({ name: extractImageName(value), url: value });
+
+const sanitizeValue = (value) => {
+  if (typeof value === "string") {
+    if (isDataUriImage(value) || isLikelyImageUrl(value)) {
+      return formatImageLink(value);
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeValue(entry));
+  }
+
+  if (value && typeof value === "object") {
+    if (typeof value.name === "string" && typeof value.url === "string") {
+      return value;
+    }
+    const copy = { ...value };
+    if (typeof copy.image === "string" && (isDataUriImage(copy.image) || isLikelyImageUrl(copy.image))) {
+      copy.image = formatImageLink(copy.image);
+    }
+    return copy;
+  }
+
+  return value;
+};
+
+const sanitizeChangedFields = (changedFields) => {
+  if (!changedFields || typeof changedFields !== "object") return changedFields;
+
+  const sanitized = {};
+  Object.entries(changedFields).forEach(([field, change]) => {
+    if (!change || typeof change !== "object") {
+      sanitized[field] = change;
+      return;
+    }
+
+    const nextChange = {};
+    if ("old" in change) nextChange.old = sanitizeValue(change.old);
+    if ("new" in change) nextChange.new = sanitizeValue(change.new);
+    sanitized[field] = nextChange;
+  });
+
+  return sanitized;
+};
+
 const collectChangedFields = (beforeDoc = {}, afterDoc = {}) => {
   const changes = {};
   TRACKED_PRODUCT_FIELDS.forEach((field) => {
@@ -109,6 +176,7 @@ const recordProductActivity = async (req, { operation, productDoc, snapshotOverr
   try {
     const adminContext = await resolveAdminContext(req?.admin);
     const snapshot = snapshotOverride || toPlainObject(productDoc) || {};
+    const sanitizedChangedFields = sanitizeChangedFields(changedFields);
     const payload = {
       operation,
       adminId: adminContext.id,
@@ -118,7 +186,8 @@ const recordProductActivity = async (req, { operation, productDoc, snapshotOverr
       productItemCode: productDoc?.itemCode || snapshot?.itemCode || "",
       productName: productDoc?.name || snapshot?.name || "",
       snapshot,
-      changedFields: changedFields && Object.keys(changedFields).length ? changedFields : null,
+      changedFields:
+        sanitizedChangedFields && Object.keys(sanitizedChangedFields).length ? sanitizedChangedFields : null,
     };
     await Activity.create(payload);
   } catch (activityError) {

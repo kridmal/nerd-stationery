@@ -117,31 +117,35 @@ const fallbackLineOriginalPrice = (product) => {
 
 export const normalizePackageLineItems = (pkg) => {
   if (Array.isArray(pkg?.items) && pkg.items.length) {
-    return pkg.items.map((item, idx) => ({
-      ...item,
-      tempId: item.tempId || item._id || `${pkg._id || "pkg"}-item-${idx}`,
-      quantity: toNumber(item.quantity, 0),
-      originalPrice: toNumber(item.originalPrice ?? item.price, 0),
-    }));
+    return pkg.items
+      .filter(Boolean)
+      .map((item, idx) => ({
+        ...item,
+        tempId: item.tempId || item._id || `${pkg._id || "pkg"}-item-${idx}`,
+        quantity: toNumber(item.quantity, 0),
+        originalPrice: toNumber(item.originalPrice ?? item.price, 0),
+      }));
   }
 
   if (Array.isArray(pkg?.products) && pkg.products.length) {
-    return pkg.products.map((product, idx) => ({
-      productId: product._id,
-      itemCode: product.itemCode ?? product.productCode,
-      productName: product.name,
-      shortDescription: product.shortDescription || product.description || "",
-      quantity: fallbackLineQuantity(product),
-      originalPrice: fallbackLineOriginalPrice(product),
-      brand: product.variations?.brand || "",
-      size: product.variations?.size || "",
-      color: product.variations?.color || "",
-      sku:
-        Array.isArray(product.variants) && product.variants[0]
-          ? product.variants[0].sku
-          : `${product.itemCode || product.productCode}-default`,
-      tempId: `${product._id || product.itemCode || "product"}-${idx}`,
-    }));
+    return pkg.products
+      .filter(Boolean)
+      .map((product, idx) => ({
+        productId: product._id,
+        itemCode: product.itemCode ?? product.productCode,
+        productName: product.name,
+        shortDescription: product.shortDescription || product.description || "",
+        quantity: fallbackLineQuantity(product),
+        originalPrice: fallbackLineOriginalPrice(product),
+        brand: product.variations?.brand || "",
+        size: product.variations?.size || "",
+        color: product.variations?.color || "",
+        sku:
+          Array.isArray(product.variants) && product.variants[0]
+            ? product.variants[0].sku
+            : `${product.itemCode || product.productCode}-default`,
+        tempId: `${product._id || product.itemCode || "product"}-${idx}`,
+      }));
   }
 
   return [];

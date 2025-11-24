@@ -146,6 +146,7 @@ const ManageQuantityPage = () => {
       <div style={{ padding: 10 }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
           <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
+          <Button onClick={() => navigate("/admin/alert-settings")}>Alert Settings</Button>
           <Button
             type="primary"
             onClick={() => {

@@ -32,6 +32,7 @@ import AdminUsersPage from "./features/admin/pages/AdminUsersPage";
 import AdminAccountPage from "./features/admin/pages/AdminAccountPage";
 import theme from "./theme";
 import PackageManagerPage from "./features/admin/pages/PackageManagerPage";
+import AlertSettingsPage from "./features/admin/pages/AlertSettingsPage";
 
 
 function LayoutWrapper({ children }) {
@@ -77,6 +78,7 @@ function App() {
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/categories" element={<CategoryManager />} />
             <Route path="/admin/manage-quantity" element={<ManageQuantityPage />} />
+            <Route path="/admin/alert-settings" element={<AlertSettingsPage />} />
             <Route path="/admin/new-arrivals" element={<NewArrivalPage />} />
             <Route path="/admin/orders" element={<ManageOrdersPage />} />
             <Route path="/admin/customers" element={<ManageCustomersPage />} />

@@ -2,10 +2,10 @@ import axios from "axios";
 
 // Create an Axios instance
 const API = axios.create({
-  baseURL: "http://54.179.149.89:5000/api",
+  baseURL: "http://localhost:5000/api",
 });
 
-// âœ… Automatically attach admin token (if exists)
+// Automatically attach admin token (if exists)
 API.interceptors.request.use((config) => {
   const token = localStorage.getItem("adminToken");
   if (token && token !== "undefined" && token !== "null") {
@@ -14,7 +14,7 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// âœ… Product APIs
+// Product APIs
 export const getProducts = async () => {
   try {
     const res = await API.get("/products");
@@ -68,11 +68,8 @@ export const deletePackage = async (id) => {
 
 export const addProduct = async (productData) => {
   try {
-    const isFormData =
-      typeof FormData !== "undefined" && productData instanceof FormData;
-    const config = isFormData
-      ? { headers: { "Content-Type": "multipart/form-data" } }
-      : undefined;
+    const isFormData = typeof FormData !== "undefined" && productData instanceof FormData;
+    const config = isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : undefined;
     const res = await API.post("/products", productData, config);
     return res.data;
   } catch (error) {
@@ -83,11 +80,8 @@ export const addProduct = async (productData) => {
 
 export const updateProduct = async (id, productData) => {
   try {
-    const isFormData =
-      typeof FormData !== "undefined" && productData instanceof FormData;
-    const config = isFormData
-      ? { headers: { "Content-Type": "multipart/form-data" } }
-      : undefined;
+    const isFormData = typeof FormData !== "undefined" && productData instanceof FormData;
+    const config = isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : undefined;
     const res = await API.put(`/products/${id}`, productData, config);
     return res.data;
   } catch (error) {
@@ -119,7 +113,18 @@ export const getProductActivities = async (params = {}) => {
   }
 };
 
-// Â· Minimum Quantity API
+// Alert settings (admin)
+export const getAlertSettings = async () => {
+  const res = await API.get("/alerts/settings");
+  return res.data;
+};
+
+export const updateAlertSettings = async (payload) => {
+  const res = await API.put("/alerts/settings", payload);
+  return res.data;
+};
+
+// Minimum Quantity API
 export const updateProductMinQuantity = async (id, minQuantity) => {
   try {
     const res = await API.put(`/products/${id}/min-quantity`, { minQuantity });
@@ -130,7 +135,7 @@ export const updateProductMinQuantity = async (id, minQuantity) => {
   }
 };
 
-// âœ… Category APIs
+// Category APIs
 export const getCategories = async () => {
   try {
     const res = await API.get("/categories");
@@ -173,7 +178,7 @@ export const addSubcategory = async (categoryId, subcategoryName) => {
   }
 };
 
-// âœ… Subcategory APIs
+// Subcategory APIs
 export const addSubCategory = async (data) => {
   const res = await API.post("/categories/sub", data);
   return res.data;
@@ -222,7 +227,6 @@ export const deleteAdminAccount = async (id) => {
 };
 
 export default API;
-
 
 // Handle auth errors globally: clear token and redirect to admin login
 API.interceptors.response.use(

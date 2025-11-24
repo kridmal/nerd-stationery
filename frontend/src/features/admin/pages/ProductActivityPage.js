@@ -6,16 +6,88 @@ import AdminLayout from "../components/AdminLayout";
 import useAdminSession from "../hooks/useAdminSession";
 import "./AdminDashboardPage.css";
 
-const formatChangedValue = (value) => {
-  if (value === null || value === undefined || value === "") return "-";
-  if (typeof value === "object") {
-    try {
-      return JSON.stringify(value);
-    } catch (error) {
-      return String(value);
-    }
+const isDataUriImage = (value) => typeof value === "string" && value.startsWith("data:image/");
+const isLikelyImageUrl = (value) => {
+  if (typeof value !== "string") return false;
+  const normalized = value.split("?")[0] || value;
+  return /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(normalized);
+};
+
+const extractImageName = (value) => {
+  if (!value || typeof value !== "string") return "image";
+  if (isDataUriImage(value)) {
+    const match = value.match(/^data:image\/([a-zA-Z0-9.+-]+);/);
+    const rawExt = match?.[1] || "png";
+    const ext = rawExt.replace("jpeg", "jpg");
+    return `image.${ext}`;
   }
-  return value;
+  const normalized = value.split("?")[0] || value;
+  const parts = normalized.split("/");
+  return parts.pop() || "image";
+};
+
+const isImageLinkObject = (value) =>
+  value && typeof value === "object" && typeof value.url === "string" && typeof value.name === "string";
+
+const renderValue = (value) => {
+  if (value === null || value === undefined || value === "") return "-";
+
+  if (isImageLinkObject(value)) {
+    return (
+      <a href={value.url} target="_blank" rel="noreferrer">
+        {value.name || extractImageName(value.url)}
+      </a>
+    );
+  }
+
+  if (typeof value === "string") {
+    if (isDataUriImage(value) || isLikelyImageUrl(value)) {
+      return (
+        <a href={value} target="_blank" rel="noreferrer">
+          {extractImageName(value)}
+        </a>
+      );
+    }
+    if (value.length > 120) {
+      return (
+        <span title={value}>
+          {value.slice(0, 80)}...{value.slice(-10)}
+        </span>
+      );
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {value.map((entry, idx) => (
+          <div key={idx} style={{ display: "flex", gap: 6 }}>
+            <span style={{ color: "#999" }}>[{idx + 1}]</span>
+            <span>{renderValue(entry)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value);
+    if (!entries.length) return "{}";
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {entries.map(([key, val]) => (
+          <div key={key} style={{ display: "flex", gap: 6 }}>
+            <strong>{key}:</strong>
+            <span>{renderValue(val)}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return String(value);
 };
 
 const renderChangedFields = (changes) => {
@@ -29,13 +101,30 @@ const renderChangedFields = (changes) => {
         <div key={field} style={{ marginBottom: 8 }}>
           <strong>{field}</strong>
           <div style={{ fontSize: 12 }}>
-            <span style={{ color: "#999" }}>old:</span> {formatChangedValue(change?.old)}
+            <span style={{ color: "#999" }}>old:</span> {renderValue(change?.old)}
           </div>
           <div style={{ fontSize: 12 }}>
-            <span style={{ color: "#999" }}>new:</span> {formatChangedValue(change?.new)}
+            <span style={{ color: "#999" }}>new:</span> {renderValue(change?.new)}
           </div>
         </div>
       ))}
+    </div>
+  );
+};
+
+const renderSnapshot = (snapshot) => {
+  const content = snapshot ?? {};
+  return (
+    <div
+      style={{
+        maxHeight: 220,
+        overflow: "auto",
+        background: "#f7f7f7",
+        padding: "8px",
+        borderRadius: "4px",
+      }}
+    >
+      {renderValue(content)}
     </div>
   );
 };
@@ -131,19 +220,7 @@ const ProductActivityPage = () => {
       title: "Snapshot",
       dataIndex: "snapshot",
       key: "snapshot",
-      render: (snapshot) => (
-        <pre
-          style={{
-            maxHeight: 220,
-            overflow: "auto",
-            background: "#f7f7f7",
-            padding: "8px",
-            borderRadius: "4px",
-          }}
-        >
-          {JSON.stringify(snapshot, null, 2)}
-        </pre>
-      ),
+      render: (snapshot) => renderSnapshot(snapshot),
     },
   ];
 

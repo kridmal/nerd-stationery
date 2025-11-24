@@ -97,11 +97,11 @@ const ProductCard = ({
     PLACEHOLDER_IMAGE;
 
   const galleryImages = useMemo(() => {
-    if (sanitizedImages.length > 0) return sanitizedImages;
-    return [safeCardImage];
-  }, [sanitizedImages, safeCardImage]);
+  if (sanitizedImages.length > 0) return sanitizedImages;
+  return [safeCardImage];
+}, [sanitizedImages, safeCardImage]);
 
-  const [detailOpen, setDetailOpen] = useState(false);
+const [detailOpen, setDetailOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
@@ -131,25 +131,26 @@ const ProductCard = ({
       ? description
       : "";
   const handleClose = () => setDetailOpen(false);
-  const handleQuickView = (event) => {
-    if (event) event.stopPropagation();
-    setDetailOpen(true);
-  };
-  const handleDialogAddToCart = () => {
-    const payload = {
-      slug,
-      name,
-      image: safeCardImage,
-      finalPrice: baseFinal,
-      originalPrice: baseOriginal,
-      discountType: normalizedDiscountType,
-      discountValue,
-    };
-    if (onQuickViewAddToCart) {
-      onQuickViewAddToCart(payload);
-      return;
-    }
-    if (typeof window !== "undefined") {
+const handleQuickView = (event) => {
+  if (event) event.stopPropagation();
+  setDetailOpen(true);
+};
+const buildCartPayload = () => ({
+  slug,
+  name,
+  image: safeCardImage,
+  finalPrice: baseFinal,
+  originalPrice: baseOriginal,
+  discountType: normalizedDiscountType,
+  discountValue,
+});
+const handleDialogAddToCart = () => {
+  const payload = buildCartPayload();
+  if (onQuickViewAddToCart) {
+    onQuickViewAddToCart(payload);
+    return;
+  }
+  if (typeof window !== "undefined") {
       window.location.href = "/cart";
     }
   };
@@ -215,8 +216,14 @@ const ProductCard = ({
                 }}
                 onClick={(event) => {
                   event.stopPropagation();
+                  const payload = buildCartPayload();
                   if (onAddToCart) {
-                    onAddToCart({ slug, name });
+                    onAddToCart(payload);
+                    return;
+                  }
+                  if (onQuickViewAddToCart) {
+                    onQuickViewAddToCart(payload);
+                    return;
                   }
                 }}
               >

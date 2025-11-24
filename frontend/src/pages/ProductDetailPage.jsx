@@ -21,6 +21,63 @@ import {
 import { getProducts } from "../services/api";
 import { addToCart } from "../utils/cartUtils";
 
+const COLOR_PALETTE = [
+  { name: "Red", hex: "#FF0000" },
+  { name: "Crimson", hex: "#DC143C" },
+  { name: "Ruby", hex: "#E0115F" },
+  { name: "Maroon", hex: "#800000" },
+
+  { name: "Orange", hex: "#FFA500" },
+  { name: "Coral", hex: "#FF7F50" },
+  { name: "Amber", hex: "#FFBF00" },
+  { name: "Burnt Orange", hex: "#CC5500" },
+
+  { name: "Yellow", hex: "#FFFF00" },
+  { name: "Gold", hex: "#FFD700" },
+  { name: "Mustard", hex: "#FFDB58" },
+  { name: "Lemon", hex: "#FFF44F" },
+
+  { name: "Green", hex: "#008000" },
+  { name: "Lime", hex: "#00FF00" },
+  { name: "Emerald", hex: "#50C878" },
+  { name: "Teal", hex: "#008080" },
+
+  { name: "Blue", hex: "#0000FF" },
+  { name: "Sky Blue", hex: "#87CEEB" },
+  { name: "Royal Blue", hex: "#4169E1" },
+  { name: "Navy", hex: "#000080" },
+
+  { name: "Purple", hex: "#800080" },
+  { name: "Lavender", hex: "#E6E6FA" },
+  { name: "Violet", hex: "#8A2BE2" },
+  { name: "Magenta", hex: "#FF00FF" },
+
+  { name: "Black", hex: "#000000" },
+  { name: "Dark Grey", hex: "#333333" },
+  { name: "Grey", hex: "#808080" },
+  { name: "Light Grey", hex: "#D3D3D3" },
+  { name: "Silver Grey", hex: "#C0C0C0" },
+  { name: "Ash Grey", hex: "#B2BEB5" },
+  { name: "Charcoal", hex: "#36454F" },
+
+  { name: "White", hex: "#FFFFFF" },
+  { name: "Ivory", hex: "#FFFFF0" },
+  { name: "Snow", hex: "#FFFAFA" },
+  { name: "Beige", hex: "#F5F5DC" },
+
+  { name: "Pink", hex: "#FFC0CB" },
+  { name: "Hot Pink", hex: "#FF69B4" },
+  { name: "Rose", hex: "#FF007F" },
+  { name: "Blush", hex: "#FEC5E5" },
+
+  { name: "Brown", hex: "#A52A2A" },
+  { name: "Dark Brown", hex: "#654321" },
+  { name: "Light Brown", hex: "#C4A484" },
+  { name: "Tan", hex: "#D2B48C" },
+  { name: "Chocolate", hex: "#7B3F00" },
+  { name: "Coffee", hex: "#6F4E37" },
+];
+
 const ProductDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -77,26 +134,11 @@ const ProductDetailPage = () => {
     () => [...new Set(product?.variants?.map((v) => v.color))].filter(Boolean),
     [product]
   );
-
-  useEffect(() => {
-    if (selectedVariant || !product?.variants?.length) return;
-    const first = product.variants[0];
-    setSelectedVariant(first);
-    setSelectedBrand(first.brand);
-    setSelectedSize(first.size);
-    setSelectedColor(first.color);
-  }, [product, selectedVariant]);
-
-  useEffect(() => {
-    if (!product) return;
-    const match = product.variants?.find(
-      (v) =>
-        v.brand === selectedBrand &&
-        v.size === selectedSize &&
-        v.color === selectedColor
-    );
-    if (match) setSelectedVariant(match);
-  }, [selectedBrand, selectedSize, selectedColor, product]);
+  const colorMap = useMemo(() => {
+    const map = new Map();
+    COLOR_PALETTE.forEach((c) => map.set(c.name.toLowerCase(), c.hex));
+    return map;
+  }, []);
 
   const primaryImage = product ? getPrimaryImage(product) : null;
   const imageGallery = useMemo(() => {
@@ -119,6 +161,63 @@ const ProductDetailPage = () => {
     if (combined.length) return combined;
     return primaryImage ? [primaryImage] : [];
   }, [product, primaryImage, selectedVariant]);
+
+  useEffect(() => {
+    if (selectedVariant || !product?.variants?.length) return;
+    const first = product.variants[0];
+    setSelectedVariant(first);
+    setSelectedBrand(first.brand);
+    setSelectedSize(first.size);
+    setSelectedColor(first.color);
+  }, [product, selectedVariant]);
+
+  useEffect(() => {
+    if (!product) return;
+    const match = product.variants?.find(
+      (v) =>
+        v.brand === selectedBrand &&
+        v.size === selectedSize &&
+        v.color === selectedColor
+    );
+    if (match) setSelectedVariant(match);
+  }, [selectedBrand, selectedSize, selectedColor, product]);
+
+  const handleColorSelect = (color) => {
+    if (!product?.variants?.length) {
+      setSelectedColor(color);
+      return;
+    }
+    // Try to find a variant by color, honoring current brand/size when possible.
+    const exact =
+      product.variants.find(
+        (v) =>
+          v.color === color &&
+          (selectedBrand ? v.brand === selectedBrand : true) &&
+          (selectedSize ? v.size === selectedSize : true)
+      ) || product.variants.find((v) => v.color === color);
+
+    if (exact) {
+      setSelectedVariant(exact);
+      setSelectedBrand(exact.brand);
+      setSelectedSize(exact.size);
+      setSelectedColor(exact.color);
+    } else {
+      setSelectedColor(color);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedVariant) return;
+    const normalizedVariantImage = normalizeImagesList([selectedVariant.image])[0];
+    if (!normalizedVariantImage) return;
+    const idx = imageGallery.findIndex((img) => img === normalizedVariantImage);
+    if (idx >= 0) {
+      setActiveImageIndex(idx);
+    } else if (imageGallery.length > 0) {
+      setActiveImageIndex(0);
+    }
+  }, [selectedVariant, imageGallery]);
+
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
@@ -148,20 +247,30 @@ const ProductDetailPage = () => {
       : null;
 
   const handleAddToCart = () => {
-    if (!product || !selectedVariant) return;
+    if (!product) return;
 
     const computedSlug = createProductSlug(product.name);
+    const fallbackVariant = {
+      _id: product._id,
+      sku: product.itemCode || product._id || computedSlug,
+      brand: product.variations?.brand || "",
+      size: product.variations?.size || "",
+      color: product.variations?.color || "",
+      image: primaryImage,
+      price: finalPrice,
+    };
+    const activeVariant = selectedVariant || fallbackVariant;
 
     addToCart({
       productId: product._id,
-      variantId: selectedVariant._id,
-      sku: selectedVariant.sku,
+      variantId: activeVariant._id,
+      sku: activeVariant.sku,
       name: product.name,
-      brand: selectedVariant.brand,
-      size: selectedVariant.size,
-      color: selectedVariant.color,
-      image: selectedVariant.image || primaryImage,
-      finalPrice: selectedVariant.price,
+      brand: activeVariant.brand,
+      size: activeVariant.size,
+      color: activeVariant.color,
+      image: activeVariant.image || primaryImage,
+      finalPrice: activeVariant.price,
       quantity: 1,
       slug: computedSlug,
     });
@@ -325,16 +434,36 @@ const ProductDetailPage = () => {
                     Color
                   </Typography>
                   <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
-                    {colorOptions.map((c) => (
-                      <Button
-                        key={c}
-                        variant={selectedColor === c ? "contained" : "outlined"}
-                        onClick={() => setSelectedColor(c)}
-                        sx={{ textTransform: "none" }}
-                      >
-                        {c}
-                      </Button>
-                    ))}
+                    {colorOptions.map((c) => {
+                      const hex = colorMap.get((c || "").toLowerCase()) || "#e2e8f0";
+                      const isSelected = selectedColor === c;
+                      return (
+                        <Button
+                          key={c}
+                          variant="outlined"
+                          onClick={() => handleColorSelect(c)}
+                          sx={{
+                            textTransform: "none",
+                            borderColor: isSelected ? hex : "#e2e8f0",
+                            color: "#1f2937",
+                            backgroundColor: "transparent",
+                            "&:hover": { borderColor: hex },
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: "50%",
+                              backgroundColor: isSelected ? hex : "#fff",
+                              border: `2px solid ${hex}`,
+                              mr: 1,
+                            }}
+                          />
+                          {c}
+                        </Button>
+                      );
+                    })}
                   </Stack>
                 </Box>
               )}
