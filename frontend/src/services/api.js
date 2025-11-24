@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create an Axios instance
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "http://54.179.149.89:5000/api",
 });
 
 // Automatically attach admin token (if exists)
