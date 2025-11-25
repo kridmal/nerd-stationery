@@ -124,6 +124,11 @@ export const updateAlertSettings = async (payload) => {
   return res.data;
 };
 
+export const triggerAlertRunNow = async () => {
+  const res = await API.post("/alerts/run-now");
+  return res.data;
+};
+
 // Minimum Quantity API
 export const updateProductMinQuantity = async (id, minQuantity) => {
   try {

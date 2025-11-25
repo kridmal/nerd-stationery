@@ -17,7 +17,7 @@ import {
 import { message } from "antd";
 import AdminLayout from "../components/AdminLayout";
 import useAdminSession from "../hooks/useAdminSession";
-import { getAlertSettings, updateAlertSettings } from "../../../services/api";
+import { getAlertSettings, updateAlertSettings, triggerAlertRunNow } from "../../../services/api";
 
 const hours = Array.from({ length: 24 }).map((_, idx) => idx.toString().padStart(2, "0"));
 const isValidEmail = (email) =>
@@ -34,6 +34,7 @@ const AlertSettingsPage = () => {
   const [sendHour, setSendHour] = useState("09");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sendingNow, setSendingNow] = useState(false);
 
   const isFormValid = useMemo(() => receiverEmail && isValidEmail(receiverEmail) && hours.includes(sendHour), [
     receiverEmail,
@@ -100,6 +101,26 @@ const AlertSettingsPage = () => {
       message.error(error?.response?.data?.message || "Failed to save alert settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRunNow = async () => {
+    try {
+      setSendingNow(true);
+      const result = await triggerAlertRunNow();
+      if (result?.status === "sent") {
+        message.success(
+          `Manual alert sent. Low: ${result.lowStockCount || 0}, Out: ${result.outOfStockCount || 0}.`
+        );
+      } else if (result?.reason) {
+        message.info(`Skipped: ${result.reason}`);
+      } else {
+        message.success("Manual alert executed.");
+      }
+    } catch (error) {
+      message.error(error?.response?.data?.message || "Failed to run alert now");
+    } finally {
+      setSendingNow(false);
     }
   };
 
@@ -185,6 +206,14 @@ const AlertSettingsPage = () => {
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2} justifyContent="flex-end">
                 <Button variant="outlined" onClick={() => navigate("/admin/manage-quantity")}>
                   Back
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={handleRunNow}
+                  disabled={sendingNow || loading}
+                >
+                  {sendingNow ? "Sending..." : "Send Now (Test)"}
                 </Button>
                 <Button variant="contained" onClick={handleSave} disabled={!isFormValid || saving}>
                   {saving ? "Saving..." : "Save Settings"}

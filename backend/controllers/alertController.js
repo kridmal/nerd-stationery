@@ -1,5 +1,6 @@
 import AlertSetting from "../models/AlertSetting.js";
 import { isRootAdminRole } from "../utils/roles.js";
+import { triggerLowStockAlertNow } from "../services/stockAlertService.js";
 
 const HOURS = Array.from({ length: 24 }).map((_, idx) => idx.toString().padStart(2, "0"));
 const isValidEmail = (email) =>
@@ -62,3 +63,19 @@ export const updateAlertSettings = async (req, res) => {
 };
 
 export const getAllowedHours = () => HOURS;
+
+export const runAlertNow = async (req, res) => {
+  try {
+    if (!req.adminRole || !isRootAdminRole(req.adminRole)) {
+      return res.status(403).json({ message: "Root admin access required" });
+    }
+    const result = await triggerLowStockAlertNow();
+    if (result?.status === "error") {
+      return res.status(500).json({ message: result.error || "Failed to send alerts" });
+    }
+    return res.json(result);
+  } catch (error) {
+    console.error("Failed to run alert now:", error);
+    return res.status(500).json({ message: "Failed to run alert now" });
+  }
+};

@@ -101,9 +101,7 @@ const buildOutOfStockEmail = (rows) => {
 };
 
 const fetchStockData = async () => {
-  const products = await Product.find({ minQuantity: { $gt: 0 } }).select(
-    "itemCode name quantity minQuantity"
-  );
+  const products = await Product.find({ minQuantity: { $gt: 0 } }).select("itemCode name quantity minQuantity");
   const lowStock = [];
   const outOfStock = [];
 
@@ -154,43 +152,58 @@ const markSentToday = async (settings, today) => {
   await settings.save();
 };
 
-const runAlertCycle = async () => {
-  if (inFlight) return;
+export const runAlertCycle = async ({ force = false, skipMark = false } = {}) => {
+  if (inFlight) return { status: "skipped", reason: "in-flight" };
   inFlight = true;
   try {
     const settings = await ensureSettings();
-    if (!settings.receiverEmail) return;
-    if (!HOURS.includes(settings.sendHour)) return;
+    if (!settings.receiverEmail) return { status: "skipped", reason: "no receiver" };
 
     const transporter = buildTransport();
-    if (!transporter) return;
+    if (!transporter) return { status: "skipped", reason: "no transporter" };
 
     const now = new Date();
     const currentHour = now.getHours().toString().padStart(2, "0");
     const todayKey = now.toISOString().slice(0, 10);
-    if (settings.lastSentDate === todayKey) return;
-    if (currentHour !== settings.sendHour) return;
+
+    if (!force) {
+      if (!HOURS.includes(settings.sendHour)) return { status: "skipped", reason: "invalid send hour" };
+      if (settings.lastSentDate === todayKey) return { status: "skipped", reason: "already sent today" };
+      if (currentHour !== settings.sendHour) return { status: "skipped", reason: "not send hour" };
+    }
 
     const { lowStock, outOfStock } = await fetchStockData();
 
     if (lowStock.length === 0 && outOfStock.length === 0) {
-      await markSentToday(settings, todayKey);
-      return;
+      if (!skipMark) await markSentToday(settings, todayKey);
+      return { status: "skipped", reason: "no stock issues" };
     }
 
     const ccList = settings.ccEmails || [];
+    let sent = 0;
     if (lowStock.length > 0) {
       const email = buildLowStockEmail(lowStock);
       await sendEmail({ to: settings.receiverEmail, cc: ccList, ...email });
+      sent += 1;
     }
     if (outOfStock.length > 0) {
       const email = buildOutOfStockEmail(outOfStock);
       await sendEmail({ to: settings.receiverEmail, cc: ccList, ...email });
+      sent += 1;
     }
 
-    await markSentToday(settings, todayKey);
+    if (!skipMark) await markSentToday(settings, todayKey);
+
+    return {
+      status: "sent",
+      sentEmails: sent,
+      lowStockCount: lowStock.length,
+      outOfStockCount: outOfStock.length,
+      forced: force,
+    };
   } catch (error) {
     console.error("Stock alert cycle failed:", error);
+    return { status: "error", error: error?.message || String(error) };
   } finally {
     inFlight = false;
   }
@@ -198,7 +211,7 @@ const runAlertCycle = async () => {
 
 export const initLowStockAlertScheduler = () => {
   if (schedulerHandle) return schedulerHandle;
-  schedulerHandle = setInterval(runAlertCycle, 60 * 1000); // check every minute
+  schedulerHandle = setInterval(() => runAlertCycle(), 60 * 1000); // check every minute
   console.log("Low-stock alert scheduler initialized (checks every minute).");
   return schedulerHandle;
 };
@@ -209,3 +222,5 @@ export const stopLowStockAlertScheduler = () => {
     schedulerHandle = null;
   }
 };
+
+export const triggerLowStockAlertNow = async () => runAlertCycle({ force: true, skipMark: true });
