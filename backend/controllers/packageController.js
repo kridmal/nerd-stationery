@@ -36,19 +36,27 @@ const normalizeImages = (primary, secondaryList = [], uploadedPrimary = [], uplo
   };
 };
 
+const handleServerError = (res, err, fallback) =>
+  res.status(500).json({ message: err?.message || fallback });
+
+const parseItems = (payload) => parseJsonArray(payload.items, payload.items || []);
+
+const uploadAndNormalizeImages = async (payload, files, existing = {}) => {
+  const uploadedPrimary = await uploadProductImages(files?.primaryImage || []);
+  const uploadedSecondary = await uploadProductImages(files?.secondaryImages || []);
+  return normalizeImages(
+    payload.primaryImage || existing.primaryImage,
+    payload.secondaryImages || payload.existingSecondaryImages || existing.secondaryImages,
+    uploadedPrimary,
+    uploadedSecondary
+  );
+};
+
 export const createPackage = async (req, res) => {
   try {
     const payload = req.body || {};
-    const uploadedPrimary = await uploadProductImages(req.files?.primaryImage || []);
-    const uploadedSecondary = await uploadProductImages(req.files?.secondaryImages || []);
-    const { primaryImage, secondaryImages } = normalizeImages(
-      payload.primaryImage,
-      payload.secondaryImages || payload.existingSecondaryImages,
-      uploadedPrimary,
-      uploadedSecondary
-    );
-
-    const items = parseJsonArray(payload.items, payload.items || []);
+    const { primaryImage, secondaryImages } = await uploadAndNormalizeImages(payload, req.files);
+    const items = parseItems(payload);
 
     const pkg = await Package.create({
       packageCode: payload.packageCode,
@@ -63,7 +71,7 @@ export const createPackage = async (req, res) => {
     });
     res.status(201).json(pkg);
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to create package" });
+    handleServerError(res, err, "Failed to create package");
   }
 };
 
@@ -72,7 +80,7 @@ export const getPackages = async (_req, res) => {
     const packages = await Package.find().lean();
     res.json(packages);
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to fetch packages" });
+    handleServerError(res, err, "Failed to fetch packages");
   }
 };
 
@@ -82,16 +90,12 @@ export const updatePackage = async (req, res) => {
     const pkg = await Package.findById(req.params.id);
     if (!pkg) return res.status(404).json({ message: "Package not found" });
 
-    const uploadedPrimary = await uploadProductImages(req.files?.primaryImage || []);
-    const uploadedSecondary = await uploadProductImages(req.files?.secondaryImages || []);
-    const { primaryImage, secondaryImages } = normalizeImages(
-      payload.primaryImage || pkg.primaryImage,
-      payload.secondaryImages || payload.existingSecondaryImages || pkg.secondaryImages,
-      uploadedPrimary,
-      uploadedSecondary
+    const { primaryImage, secondaryImages } = await uploadAndNormalizeImages(
+      payload,
+      req.files,
+      pkg
     );
-
-    const items = parseJsonArray(payload.items, payload.items || []);
+    const items = parseItems(payload);
 
     if (payload.packageCode != null) pkg.packageCode = payload.packageCode;
     if (payload.name != null) pkg.name = payload.name;
@@ -106,7 +110,7 @@ export const updatePackage = async (req, res) => {
     const saved = await pkg.save();
     res.json(saved);
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to update package" });
+    handleServerError(res, err, "Failed to update package");
   }
 };
 
@@ -118,6 +122,6 @@ export const deletePackage = async (req, res) => {
     }
     res.json({ message: "Package deleted" });
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to delete package" });
+    handleServerError(res, err, "Failed to delete package");
   }
 };

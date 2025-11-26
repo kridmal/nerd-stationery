@@ -2,21 +2,18 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { isAdminRole, isRootAdminRole, normalizeAdminRole } from "../utils/roles.js";
 
+const errorResponse = (res, status, message) => res.status(status).json({ message });
+const extractToken = (req) => req.header("Authorization")?.replace("Bearer ", "");
+
 const authAdmin = async (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) {
-    return res
-      .status(401)
-      .json({ message: "Access denied. No token provided." });
-  }
+  const token = extractToken(req);
+  if (!token) return errorResponse(res, 401, "Access denied. No token provided.");
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const admin = await User.findById(decoded.id).select("-password");
 
-    if (!admin || !isAdminRole(admin.role)) {
-      return res.status(403).json({ message: "Admin privileges required" });
-    }
+    if (!admin || !isAdminRole(admin.role)) return errorResponse(res, 403, "Admin privileges required");
 
     const normalizedRole = normalizeAdminRole(admin.role);
     req.admin = {
@@ -28,13 +25,13 @@ const authAdmin = async (req, res, next) => {
 
     next();
   } catch (error) {
-    res.status(400).json({ message: "Invalid token" });
+    errorResponse(res, 400, "Invalid token");
   }
 };
 
 export const requireRootAdmin = (req, res, next) => {
   if (!req.adminRole || !isRootAdminRole(req.adminRole)) {
-    return res.status(403).json({ message: "Root admin access required" });
+    return errorResponse(res, 403, "Root admin access required");
   }
   next();
 };

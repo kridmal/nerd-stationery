@@ -21,6 +21,43 @@ const calculateFinalPrice = (originalPrice, discountType, discountValue) => {
   return Number(finalPrice.toFixed(2));
 };
 
+const extractNumbers = (variants = [], key) =>
+  variants
+    .map((v) => Number(v?.[key]) || 0)
+    .filter((n) => !Number.isNaN(n));
+
+const normalizeDiscount = (product) => {
+  const validTypes = ["percentage", "fixed", "none"];
+  if (!validTypes.includes(product.discountType)) {
+    product.discountType = "none";
+  }
+  if (product.discountType === "none") {
+    product.discountValue = 0;
+    return;
+  }
+  if (product.discountType === "percentage") {
+    product.discountValue = clampNumber(product.discountValue, 0, 100);
+    return;
+  }
+  const base = Number(product.originalPrice) || 0;
+  product.discountValue = clampNumber(product.discountValue, 0, base);
+};
+
+const seedDefaultVariantIfNeeded = (product) => {
+  if ((product.variants && product.variants.length) || product.quantity <= 0) return;
+  product.variants = [
+    {
+      brand: product.variations?.brand ?? "",
+      size: product.variations?.size ?? "",
+      color: product.variations?.color ?? "",
+      sku: `${product.itemCode}-default`,
+      price: product.originalPrice || 0,
+      quantity: product.quantity,
+      image: (product.images || [])[0] || "",
+    },
+  ];
+};
+
 const variantSchema = new mongoose.Schema(
   {
     brand: { type: String, trim: true, default: "" },
@@ -127,12 +164,8 @@ productSchema.set("toObject", { virtuals: true });
 productSchema.pre("validate", function handlePricing(next) {
   const product = this;
 
-  const variantPrices = (product.variants || [])
-    .map((v) => Number(v?.price) || 0)
-    .filter((n) => !Number.isNaN(n));
-  const variantQuantities = (product.variants || [])
-    .map((v) => Number(v?.quantity) || 0)
-    .filter((n) => !Number.isNaN(n));
+  const variantPrices = extractNumbers(product.variants, "price");
+  const variantQuantities = extractNumbers(product.variants, "quantity");
 
   if (variantQuantities.length) {
     product.quantity = variantQuantities.reduce((sum, q) => sum + q, 0);
@@ -141,18 +174,7 @@ productSchema.pre("validate", function handlePricing(next) {
     product.originalPrice = Math.min(...variantPrices);
   }
 
-  if (!["percentage", "fixed", "none"].includes(product.discountType)) {
-    product.discountType = "none";
-  }
-
-  if (product.discountType === "none") {
-    product.discountValue = 0;
-  } else if (product.discountType === "percentage") {
-    product.discountValue = clampNumber(product.discountValue, 0, 100);
-  } else if (product.discountType === "fixed") {
-    const base = Number(product.originalPrice) || 0;
-    product.discountValue = clampNumber(product.discountValue, 0, base);
-  }
+  normalizeDiscount(product);
 
   product.finalPrice = calculateFinalPrice(
     product.originalPrice,
@@ -161,19 +183,7 @@ productSchema.pre("validate", function handlePricing(next) {
   );
 
   // Legacy fallback: if document has quantity but no variants, seed a default variant
-  if ((!product.variants || product.variants.length === 0) && product.quantity > 0) {
-    product.variants = [
-      {
-        brand: product.variations?.brand ?? "",
-        size: product.variations?.size ?? "",
-        color: product.variations?.color ?? "",
-        sku: `${product.itemCode}-default`,
-        price: product.originalPrice || 0,
-        quantity: product.quantity,
-        image: (product.images || [])[0] || "",
-      },
-    ];
-  }
+  seedDefaultVariantIfNeeded(product);
 
   next();
 });

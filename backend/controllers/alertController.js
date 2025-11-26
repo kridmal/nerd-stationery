@@ -3,6 +3,12 @@ import { isRootAdminRole } from "../utils/roles.js";
 import { triggerLowStockAlertNow } from "../services/stockAlertService.js";
 
 const HOURS = Array.from({ length: 24 }).map((_, idx) => idx.toString().padStart(2, "0"));
+const forbiddenRootOnly = { status: 403, body: { message: "Root admin access required" } };
+const serverError = (res, error, msg) => {
+  console.error(msg, error);
+  return res.status(500).json({ message: msg });
+};
+const isRootAdminRequest = (req) => req.adminRole && isRootAdminRole(req.adminRole);
 const isValidEmail = (email) =>
   typeof email === "string" &&
   email.trim().length > 3 &&
@@ -16,22 +22,17 @@ const ensureSettings = async () => {
 
 export const getAlertSettings = async (req, res) => {
   try {
-    if (!req.adminRole || !isRootAdminRole(req.adminRole)) {
-      return res.status(403).json({ message: "Root admin access required" });
-    }
+    if (!isRootAdminRequest(req)) return res.status(forbiddenRootOnly.status).json(forbiddenRootOnly.body);
     const settings = await ensureSettings();
     return res.json(settings);
   } catch (error) {
-    console.error("Failed to fetch alert settings:", error);
-    return res.status(500).json({ message: "Failed to fetch alert settings" });
+    return serverError(res, error, "Failed to fetch alert settings");
   }
 };
 
 export const updateAlertSettings = async (req, res) => {
   try {
-    if (!req.adminRole || !isRootAdminRole(req.adminRole)) {
-      return res.status(403).json({ message: "Root admin access required" });
-    }
+    if (!isRootAdminRequest(req)) return res.status(forbiddenRootOnly.status).json(forbiddenRootOnly.body);
 
     const { receiverEmail, ccEmails, sendHour } = req.body || {};
 
@@ -57,8 +58,7 @@ export const updateAlertSettings = async (req, res) => {
 
     return res.json(settings);
   } catch (error) {
-    console.error("Failed to update alert settings:", error);
-    return res.status(500).json({ message: "Failed to update alert settings" });
+    return serverError(res, error, "Failed to update alert settings");
   }
 };
 
@@ -66,16 +66,13 @@ export const getAllowedHours = () => HOURS;
 
 export const runAlertNow = async (req, res) => {
   try {
-    if (!req.adminRole || !isRootAdminRole(req.adminRole)) {
-      return res.status(403).json({ message: "Root admin access required" });
-    }
+    if (!isRootAdminRequest(req)) return res.status(forbiddenRootOnly.status).json(forbiddenRootOnly.body);
     const result = await triggerLowStockAlertNow();
     if (result?.status === "error") {
       return res.status(500).json({ message: result.error || "Failed to send alerts" });
     }
     return res.json(result);
   } catch (error) {
-    console.error("Failed to run alert now:", error);
-    return res.status(500).json({ message: "Failed to run alert now" });
+    return serverError(res, error, "Failed to run alert now");
   }
 };

@@ -4,6 +4,9 @@ import User from "../models/User.js";
 import AdminAccount from "../models/Admin.js";
 import { uploadProductImages } from "../utils/s3Uploader.js";
 
+const validationError = (res, message) => res.status(400).json({ message });
+const duplicateItemCodeError = (res) => res.status(400).json({ message: "Item code must be unique" });
+
 const clampNumber = (value, min = 0, max = Number.POSITIVE_INFINITY) => {
   const numericValue = Number(value) || 0;
   return Math.min(Math.max(numericValue, min), max);
@@ -223,6 +226,32 @@ const normalizeVariants = (variants, uploadedVariantImages = [], itemCode = "SKU
     .filter((v) => v.price >= 0 && v.quantity >= 0);
 };
 
+const normalizeVariantInputs = (rawVariants, uploadedVariantImages, itemCode) => {
+  const parsedVariants = parseJsonArray(rawVariants, []);
+  const normalizedVariants = normalizeVariants(parsedVariants, uploadedVariantImages, itemCode);
+  const aggregatedQuantity = normalizedVariants.reduce((sum, v) => sum + toNumber(v.quantity, 0), 0);
+  const lowestVariantPrice = Math.min(...normalizedVariants.map((v) => toNumber(v.price, 0)));
+  return { normalizedVariants, aggregatedQuantity, lowestVariantPrice };
+};
+
+const computeDiscount = (discountType, discountValue, lowestVariantPrice) => {
+  const normalizedDiscountType = normalizeDiscountType(discountType);
+  const normalizedDiscountValue =
+    normalizedDiscountType === "percentage"
+      ? clampNumber(discountValue, 0, 100)
+      : normalizedDiscountType === "fixed"
+      ? clampNumber(discountValue, 0, lowestVariantPrice)
+      : 0;
+  const finalPrice = calculateFinalPrice(lowestVariantPrice, normalizedDiscountType, normalizedDiscountValue);
+  return { normalizedDiscountType, normalizedDiscountValue, finalPrice };
+};
+
+const uploadImages = async (files = {}) => {
+  const uploadedMainImages = await uploadProductImages(files?.images || files || []);
+  const uploadedVariantImages = await uploadProductImages(files?.variantImages || []);
+  return { uploadedMainImages, uploadedVariantImages };
+};
+
 export const createProduct = async (req, res) => {
   try {
     const {
@@ -242,29 +271,26 @@ export const createProduct = async (req, res) => {
     }
 
     const retainedImages = parseJsonArray(existingImages, []);
-    const uploadedMainImages = await uploadProductImages(req.files?.images || req.files || []);
-    const uploadedVariantImages = await uploadProductImages(req.files?.variantImages || []);
+    const { uploadedMainImages, uploadedVariantImages } = await uploadImages(req.files);
 
-    const parsedVariants = parseJsonArray(variants, []);
-    const normalizedVariants = normalizeVariants(parsedVariants, uploadedVariantImages, itemCode);
+    const { normalizedVariants, aggregatedQuantity, lowestVariantPrice } = normalizeVariantInputs(
+      variants,
+      uploadedVariantImages,
+      itemCode
+    );
 
     if (!normalizedVariants.length) {
-      return res.status(400).json({ message: "At least one variant is required" });
+      return validationError(res, "At least one variant is required");
     }
     if (normalizedVariants.some((v) => v.price < 0 || v.quantity < 0)) {
-      return res.status(400).json({ message: "Variant price/quantity cannot be negative" });
+      return validationError(res, "Variant price/quantity cannot be negative");
     }
 
-    const aggregatedQuantity = normalizedVariants.reduce((sum, v) => sum + toNumber(v.quantity, 0), 0);
-    const lowestVariantPrice = Math.min(...normalizedVariants.map((v) => toNumber(v.price, 0)));
-    const normalizedDiscountType = normalizeDiscountType(discountType);
-    const normalizedDiscountValue =
-      normalizedDiscountType === "percentage"
-        ? clampNumber(discountValue, 0, 100)
-        : normalizedDiscountType === "fixed"
-        ? clampNumber(discountValue, 0, lowestVariantPrice)
-        : 0;
-    const finalPrice = calculateFinalPrice(lowestVariantPrice, normalizedDiscountType, normalizedDiscountValue);
+    const { normalizedDiscountType, normalizedDiscountValue, finalPrice } = computeDiscount(
+      discountType,
+      discountValue,
+      lowestVariantPrice
+    );
 
     const product = new Product({
       itemCode,
@@ -288,7 +314,7 @@ export const createProduct = async (req, res) => {
   } catch (error) {
     console.error("Error creating product:", error);
     if (error?.code === 11000) {
-      return res.status(400).json({ message: "Item code must be unique" });
+      return duplicateItemCodeError(res);
     }
     return res.status(400).json({ message: error?.message || "Failed to create product" });
   }
@@ -314,20 +340,18 @@ export const updateProduct = async (req, res) => {
     const beforeSnapshot = toPlainObject(product);
 
     const retainedImages = parseJsonArray(existingImages, product.images || []);
-    const uploadedMainImages = await uploadProductImages(req.files?.images || req.files || []);
-    const uploadedVariantImages = await uploadProductImages(req.files?.variantImages || []);
+    const { uploadedMainImages, uploadedVariantImages } = await uploadImages(req.files);
 
-    const parsedVariants = parseJsonArray(variants, []);
-    const normalizedVariants = normalizeVariants(
-      parsedVariants,
+    const { normalizedVariants, aggregatedQuantity, lowestVariantPrice } = normalizeVariantInputs(
+      variants,
       uploadedVariantImages,
       itemCode || product.itemCode
     );
     if (!normalizedVariants.length) {
-      return res.status(400).json({ message: "At least one variant is required" });
+      return validationError(res, "At least one variant is required");
     }
     if (normalizedVariants.some((v) => v.price < 0 || v.quantity < 0)) {
-      return res.status(400).json({ message: "Variant price/quantity cannot be negative" });
+      return validationError(res, "Variant price/quantity cannot be negative");
     }
 
     if (itemCode) product.itemCode = itemCode;
@@ -336,16 +360,11 @@ export const updateProduct = async (req, res) => {
     if (subcategory) product.subcategory = subcategory;
     if (shortDescription != null) product.shortDescription = shortDescription;
 
-    const aggregatedQuantity = normalizedVariants.reduce((sum, v) => sum + toNumber(v.quantity, 0), 0);
-    const lowestVariantPrice = Math.min(...normalizedVariants.map((v) => toNumber(v.price, 0)));
-    const normalizedDiscountType = normalizeDiscountType(discountType);
-    const normalizedDiscountValue =
-      normalizedDiscountType === "percentage"
-        ? clampNumber(discountValue, 0, 100)
-        : normalizedDiscountType === "fixed"
-        ? clampNumber(discountValue, 0, lowestVariantPrice)
-        : 0;
-    const finalPrice = calculateFinalPrice(lowestVariantPrice, normalizedDiscountType, normalizedDiscountValue);
+    const { normalizedDiscountType, normalizedDiscountValue, finalPrice } = computeDiscount(
+      discountType,
+      discountValue,
+      lowestVariantPrice
+    );
 
     product.variants = normalizedVariants;
     product.quantity = aggregatedQuantity;
@@ -369,7 +388,7 @@ export const updateProduct = async (req, res) => {
   } catch (error) {
     console.error("Error updating product:", error);
     if (error?.code === 11000) {
-      return res.status(400).json({ message: "Item code must be unique" });
+      return duplicateItemCodeError(res);
     }
     return res.status(400).json({ message: error?.message || "Failed to update product" });
   }

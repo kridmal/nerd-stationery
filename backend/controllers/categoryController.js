@@ -1,12 +1,15 @@
 import Category from "../models/Category.js";
 
+const serverError = (res) => res.status(500).json({ message: "Server error" });
+const badRequest = (res, message) => res.status(400).json({ message });
+
 // ✅ Get all categories (with subcategories)
 export const getCategories = async (req, res) => {
   try {
     const categories = await Category.find().sort({ name: 1 });
     res.json(categories);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    serverError(res);
   }
 };
 
@@ -14,16 +17,16 @@ export const getCategories = async (req, res) => {
 export const addCategory = async (req, res) => {
   try {
     const { name } = req.body;
-    if (!name) return res.status(400).json({ message: "Name is required" });
+    if (!name) return badRequest(res, "Name is required");
 
     const existing = await Category.findOne({ name });
-    if (existing) return res.status(400).json({ message: "Category already exists" });
+    if (existing) return badRequest(res, "Category already exists");
 
     const category = new Category({ name, subcategories: [] });
     await category.save();
     res.status(201).json(category);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    serverError(res);
   }
 };
 
@@ -36,7 +39,7 @@ export const updateCategory = async (req, res) => {
     const updated = await Category.findByIdAndUpdate(id, { name }, { new: true });
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    serverError(res);
   }
 };
 
@@ -46,7 +49,7 @@ export const deleteCategory = async (req, res) => {
     await Category.findByIdAndDelete(req.params.id);
     res.json({ message: "Category deleted" });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    serverError(res);
   }
 };
 
@@ -54,14 +57,14 @@ export const deleteCategory = async (req, res) => {
 export const addSubCategory = async (req, res) => {
   try {
     const { categoryId, name } = req.body;
-    if (!name) return res.status(400).json({ message: "Subcategory name is required" });
+    if (!name) return badRequest(res, "Subcategory name is required");
 
     const category = await Category.findById(categoryId);
     category.subcategories.push({ name });
     await category.save();
     res.status(201).json(category);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    serverError(res);
   }
 };
 
@@ -77,7 +80,7 @@ export const updateSubCategory = async (req, res) => {
 
     res.json(category);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    serverError(res);
   }
 };
 
@@ -92,6 +95,6 @@ export const deleteSubCategory = async (req, res) => {
     await category.save();
     res.json(category);
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    serverError(res);
   }
 };

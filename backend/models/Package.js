@@ -33,28 +33,29 @@ const packageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-packageSchema.pre("save", function computeTotals(next) {
-  const pkg = this;
-  const computedTotal =
-    Array.isArray(pkg.items) && pkg.items.length
-      ? pkg.items.reduce(
-          (sum, item) =>
-            sum +
-            (Number(item.originalPrice || 0) || 0) * (Number(item.quantity || 0) || 0),
-          0
-        )
-      : pkg.totalOriginal || 0;
-  pkg.totalOriginal = computedTotal;
-  pkg.secondaryImages = Array.isArray(pkg.secondaryImages)
-    ? pkg.secondaryImages.filter(Boolean)
-    : [];
+const toNumber = (value) => Number(value || 0) || 0;
+const computeTotalOriginal = (items = [], fallback = 0) =>
+  Array.isArray(items) && items.length
+    ? items.reduce((sum, item) => sum + toNumber(item.originalPrice) * toNumber(item.quantity), 0)
+    : fallback || 0;
+const normalizeImages = (images) => (Array.isArray(images) ? images.filter(Boolean) : []);
+const syncPrimaryImage = (pkg) => {
+  pkg.secondaryImages = normalizeImages(pkg.secondaryImages);
   if (!pkg.primaryImage && pkg.secondaryImages.length) {
-    [pkg.primaryImage] = pkg.secondaryImages;
+    pkg.primaryImage = pkg.secondaryImages[0];
   }
+};
+const syncLegacyPrice = (pkg) => {
   if (pkg.packagePrice == null && pkg.price != null) {
     pkg.packagePrice = pkg.price;
   }
   pkg.price = pkg.packagePrice;
+};
+
+packageSchema.pre("save", function computeTotals(next) {
+  this.totalOriginal = computeTotalOriginal(this.items, this.totalOriginal);
+  syncPrimaryImage(this);
+  syncLegacyPrice(this);
   next();
 });
 

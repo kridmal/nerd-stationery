@@ -6,6 +6,10 @@ import {
   sanitizeUserForResponse,
 } from "../utils/roles.js";
 
+const ADMIN_ROLES = ["root_admin", "manager_admin", "admin"];
+const badRequest = (res, message) => res.status(400).json({ message });
+const sanitizeAdmin = (admin) => sanitizeUserForResponse(admin);
+
 const ensureAdminTarget = (user) => {
   if (!user || !isAdminRole(user.role)) {
     const error = new Error("Admin not found");
@@ -14,17 +18,23 @@ const ensureAdminTarget = (user) => {
   }
 };
 
+const findAdminByIdOrThrow = async (id) => {
+  const admin = await User.findById(id);
+  ensureAdminTarget(admin);
+  return admin;
+};
+
 export const getCurrentAdmin = async (req, res) => {
-  return res.json({ admin: sanitizeUserForResponse(req.admin) });
+  return res.json({ admin: sanitizeAdmin(req.admin) });
 };
 
 export const listAdmins = async (_req, res) => {
-  const admins = await User.find({ role: { $in: ["root_admin", "manager_admin", "admin"] } })
+  const admins = await User.find({ role: { $in: ADMIN_ROLES } })
     .select("-password")
     .sort({ createdAt: 1 });
 
   res.json({
-    admins: admins.map((admin) => sanitizeUserForResponse(admin)),
+    admins: admins.map((admin) => sanitizeAdmin(admin)),
   });
 };
 
@@ -32,21 +42,21 @@ export const createAdmin = async (req, res) => {
   const { name, email, password, role } = req.body || {};
 
   if (!name || !email || !password) {
-    return res.status(400).json({ message: "Name, email and password are required" });
+    return badRequest(res, "Name, email and password are required");
   }
 
   const normalizedRole = normalizeAdminRole(role || "manager_admin");
   if (!isAdminRole(normalizedRole)) {
-    return res.status(400).json({ message: "Invalid admin role" });
+    return badRequest(res, "Invalid admin role");
   }
 
   const existing = await User.findOne({ email });
   if (existing) {
-    return res.status(400).json({ message: "Admin with this email already exists" });
+    return badRequest(res, "Admin with this email already exists");
   }
 
   const admin = await User.create({ name, email, password, role: normalizedRole });
-  return res.status(201).json({ admin: sanitizeUserForResponse(admin) });
+  return res.status(201).json({ admin: sanitizeAdmin(admin) });
 };
 
 export const resetAdminPassword = async (req, res) => {
@@ -54,13 +64,10 @@ export const resetAdminPassword = async (req, res) => {
   const { newPassword } = req.body || {};
 
   if (!newPassword || String(newPassword).length < 6) {
-    return res
-      .status(400)
-      .json({ message: "New password must be at least 6 characters long" });
+    return badRequest(res, "New password must be at least 6 characters long");
   }
 
-  const admin = await User.findById(id);
-  ensureAdminTarget(admin);
+  const admin = await findAdminByIdOrThrow(id);
 
   const isSelf = req.adminId === String(admin._id);
   if (!isSelf && !isRootAdminRole(req.adminRole)) {
@@ -74,14 +81,13 @@ export const resetAdminPassword = async (req, res) => {
 
   return res.json({
     message: isSelf ? "Password updated" : "Admin password reset",
-    admin: sanitizeUserForResponse(admin),
+    admin: sanitizeAdmin(admin),
   });
 };
 
 export const deleteAdmin = async (req, res) => {
   const { id } = req.params;
-  const admin = await User.findById(id);
-  ensureAdminTarget(admin);
+  const admin = await findAdminByIdOrThrow(id);
 
   const normalizedTargetRole = normalizeAdminRole(admin.role);
   if (isRootAdminRole(normalizedTargetRole)) {

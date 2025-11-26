@@ -30,18 +30,38 @@ const dedupeImages = (list = []) => {
   });
 };
 
+const buildImages = (pkg) => {
+  const merged = [
+    pkg?.primaryImage,
+    ...(Array.isArray(pkg?.secondaryImages) ? pkg.secondaryImages : []),
+  ].filter(Boolean);
+  const safe = dedupeImages(merged);
+  return safe.length ? safe : [PLACEHOLDER_IMAGE];
+};
+
+const getIncludedItems = (pkg) => (Array.isArray(pkg?.items) ? pkg.items : []);
+
+const PriceBlock = ({ price, totalOriginal }) => (
+  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+    <Typography variant="h6" className="package-card__price">
+      {formatCurrency(price)}
+    </Typography>
+    {totalOriginal && Number(totalOriginal) > Number(price || 0) ? (
+      <Chip
+        label={`Value ${formatCurrency(totalOriginal)}`}
+        size="small"
+        color="default"
+        variant="outlined"
+      />
+    ) : null}
+  </Stack>
+);
+
 const PackageCard = ({ pkg, onAddToCart, onNavigate }) => {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  const images = useMemo(() => {
-    const merged = [
-      pkg?.primaryImage,
-      ...(Array.isArray(pkg?.secondaryImages) ? pkg.secondaryImages : []),
-    ].filter(Boolean);
-    const safe = dedupeImages(merged);
-    return safe.length ? safe : [PLACEHOLDER_IMAGE];
-  }, [pkg]);
+  const images = useMemo(() => buildImages(pkg), [pkg]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -49,29 +69,13 @@ const PackageCard = ({ pkg, onAddToCart, onNavigate }) => {
 
   const activeImage = images[activeIndex] || images[0] || PLACEHOLDER_IMAGE;
   const previewImages = images.slice(0, 5);
-  const includedItems = Array.isArray(pkg?.items) ? pkg.items : [];
+  const includedItems = getIncludedItems(pkg);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const handleNavigate = () => {
     if (onNavigate) onNavigate(pkg);
   };
-
-  const priceBlock = (
-    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-      <Typography variant="h6" className="package-card__price">
-        {formatCurrency(pkg?.price)}
-      </Typography>
-      {pkg?.totalOriginal && Number(pkg.totalOriginal) > Number(pkg.price || 0) ? (
-        <Chip
-          label={`Value ${formatCurrency(pkg.totalOriginal)}`}
-          size="small"
-          color="default"
-          variant="outlined"
-        />
-      ) : null}
-    </Stack>
-  );
 
   return (
     <>
@@ -108,7 +112,7 @@ const PackageCard = ({ pkg, onAddToCart, onNavigate }) => {
                 ) : null}
               </ul>
             ) : null}
-            {priceBlock}
+            <PriceBlock price={pkg?.price} totalOriginal={pkg?.totalOriginal} />
           </div>
 
           <div className="package-card__media">
@@ -201,7 +205,7 @@ const PackageCard = ({ pkg, onAddToCart, onNavigate }) => {
               <Typography variant="body1" sx={{ color: "#4a5568" }}>
                 {pkg?.shortDescription || pkg?.description || "Curated stationery bundle"}
               </Typography>
-              {priceBlock}
+              <PriceBlock price={pkg?.price} totalOriginal={pkg?.totalOriginal} />
               <Divider />
               <div>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>

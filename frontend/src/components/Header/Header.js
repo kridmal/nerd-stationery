@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -17,40 +17,53 @@ import CloseIcon from "@mui/icons-material/Close";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
+const NAV_ITEMS = [
+  {
+    label: "New Arrival",
+    type: "combo",
+    to: "/new-arrivals",
+    badgeColor: "#E53935",
+    badgeText: "New",
+  },
+  {
+    label: "Discount",
+    type: "combo",
+    to: "/discounts",
+    badgeColor: "#E53935",
+    badgeText: "Sale",
+  },
+  {
+    label: "Packages",
+    type: "combo",
+    to: "/packages",
+    badgeColor: "#1A73E8",
+    badgeText: "Save",
+  },
+  { label: "Home", type: "link", to: "/" },
+  { label: "Products", type: "link", to: "/products" },
+  { label: "About", type: "link", to: "/about" },
+  { label: "Contact", type: "link", to: "/contact" },
+];
+
+const highlightBadge = (badgeColor = "#E53935", text = "Hot") => (
+  <span
+    style={{
+      backgroundColor: badgeColor,
+      color: "#fff",
+      fontSize: "0.65rem",
+      padding: "2px 8px",
+      borderRadius: 999,
+      marginLeft: 8,
+      textTransform: "uppercase",
+    }}
+  >
+    {text}
+  </span>
+);
+
 function Header() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const navItems = useMemo(
-    () => [
-      {
-        label: "New Arrival",
-        type: "combo",
-        to: "/new-arrivals",
-        badgeColor: "#E53935",
-        badgeText: "New",
-      },
-      {
-        label: "Discount",
-        type: "combo",
-        to: "/discounts",
-        badgeColor: "#E53935",
-        badgeText: "Sale",
-      },
-      {
-        label: "Packages",
-        type: "combo",
-        to: "/packages",
-        badgeColor: "#1A73E8",
-        badgeText: "Save",
-      },
-      { label: "Home", type: "link", to: "/" },
-      { label: "Products", type: "link", to: "/products" },
-      { label: "About", type: "link", to: "/about" },
-      { label: "Contact", type: "link", to: "/contact" },
-    ],
-    []
-  );
 
   const handleNavClick = (item) => {
     if (item.type === "link" || item.type === "combo") {
@@ -58,22 +71,6 @@ function Header() {
     }
     setMobileOpen(false);
   };
-
-  const highlightBadge = (badgeColor = "#E53935", text = "Hot") => (
-    <span
-      style={{
-        backgroundColor: badgeColor,
-        color: "#fff",
-        fontSize: "0.65rem",
-        padding: "2px 8px",
-        borderRadius: 999,
-        marginLeft: 8,
-        textTransform: "uppercase",
-      }}
-    >
-      {text}
-    </span>
-  );
 
   return (
     <AppBar
@@ -116,7 +113,7 @@ function Header() {
             gap: 2,
           }}
         >
-          {navItems.map((item) => (
+          {NAV_ITEMS.map((item) => (
             <Box
               key={item.label}
               sx={{
@@ -203,7 +200,7 @@ function Header() {
           </Box>
           <Divider />
           <List>
-            {navItems.map((item) => (
+            {NAV_ITEMS.map((item) => (
               <ListItemButton
                 key={item.label}
                 onClick={() => handleNavClick(item)}

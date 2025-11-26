@@ -7,14 +7,19 @@ const toNumber = (value, fallback = 0) => {
   return Number.isNaN(num) ? fallback : num;
 };
 
+const badRequest = (res, message) => res.status(400).json({ message });
+const notFound = (res, message) => res.status(404).json({ message });
+const serverError = (res, message) => res.status(500).json({ message });
+const firstImage = (product) =>
+  Array.isArray(product.images) && product.images.length ? product.images[0] : "";
+const lineTotal = (item) => toNumber(item.price, item.originalPrice) * item.quantity;
+
 export const createOrder = async (req, res) => {
   try {
     const { items = [], delivery, paymentMethod = "cod", deliveryFee = 0 } = req.body || {};
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "No items provided" });
-    }
+    if (!Array.isArray(items) || items.length === 0) return badRequest(res, "No items provided");
     if (!delivery || !delivery.name || !delivery.address) {
-      return res.status(400).json({ message: "Delivery details are required" });
+      return badRequest(res, "Delivery details are required");
     }
 
     const productIds = items.map((i) => i.productId).filter(Boolean);
@@ -27,13 +32,11 @@ export const createOrder = async (req, res) => {
     for (const item of items) {
       const prod = productMap.get(String(item.productId));
       if (!prod) {
-        return res.status(404).json({ message: `Product not found for item ${item.productId}` });
+        return notFound(res, `Product not found for item ${item.productId}`);
       }
       const quantity = Math.max(1, toNumber(item.quantity, 1));
       if (quantity > prod.quantity) {
-        return res
-          .status(400)
-          .json({ message: `Only ${prod.quantity} items left in stock for ${prod.name}.` });
+        return badRequest(res, `Only ${prod.quantity} items left in stock for ${prod.name}.`);
       }
 
       const originalPrice = toNumber(prod.originalPrice, prod.finalPrice);
@@ -44,7 +47,7 @@ export const createOrder = async (req, res) => {
         product: prod._id,
         name: prod.name,
         slug: createProductSlug(prod.name || prod.itemCode || prod._id),
-        image: Array.isArray(prod.images) && prod.images.length ? prod.images[0] : "",
+        image: firstImage(prod),
         quantity,
         price: finalPrice,
         originalPrice,
@@ -54,16 +57,10 @@ export const createOrder = async (req, res) => {
       });
     }
 
-    const discountTotal = Math.max(
-      0,
-      subtotal -
-        normalizedItems.reduce((acc, item) => acc + toNumber(item.price, item.originalPrice) * item.quantity, 0)
-    );
-    const grandTotal =
-      normalizedItems.reduce(
-        (acc, item) => acc + toNumber(item.price, item.originalPrice) * item.quantity,
-        0
-      ) + toNumber(deliveryFee, 0);
+    const itemsTotal = normalizedItems.reduce((acc, item) => acc + lineTotal(item), 0);
+    const deliveryFeeValue = toNumber(deliveryFee, 0);
+    const discountTotal = Math.max(0, subtotal - itemsTotal);
+    const grandTotal = itemsTotal + deliveryFeeValue;
 
     const order = new Order({
       items: normalizedItems,
@@ -71,7 +68,7 @@ export const createOrder = async (req, res) => {
       paymentMethod,
       subtotal,
       discountTotal,
-      deliveryFee: toNumber(deliveryFee, 0),
+      deliveryFee: deliveryFeeValue,
       grandTotal,
       status: "pending",
     });
@@ -86,7 +83,7 @@ export const createOrder = async (req, res) => {
     res.status(201).json(order);
   } catch (error) {
     console.error("Create order error:", error);
-    res.status(500).json({ message: "Failed to place order" });
+    serverError(res, "Failed to place order");
   }
 };
 
@@ -95,6 +92,6 @@ export const getOrders = async (_req, res) => {
     const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch orders" });
+    serverError(res, "Failed to fetch orders");
   }
 };
