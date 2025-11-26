@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Table, Button, Input, message, Space, Tag } from "antd";
+import { Table, Button, message, Space, Tag, DatePicker } from "antd";
 import { useNavigate } from "react-router-dom";
 import { getProductActivities } from "../../../services/api";
 import AdminLayout from "../components/AdminLayout";
 import useAdminSession from "../hooks/useAdminSession";
 import "./AdminDashboardPage.css";
+import dayjs from "dayjs";
+
+  const { RangePicker } = DatePicker;
 
 const isDataUriImage = (value) => typeof value === "string" && value.startsWith("data:image/");
 const isLikelyImageUrl = (value) => {
@@ -133,16 +136,17 @@ const ProductActivityPage = () => {
   const navigate = useNavigate();
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [productIdFilter, setProductIdFilter] = useState("");
-  const [itemCodeFilter, setItemCodeFilter] = useState("");
+  const [dateRange, setDateRange] = useState([]);
   const { isRootAdmin } = useAdminSession();
 
   const fetchActivityLogs = useCallback(async () => {
     try {
       setLoading(true);
       const params = { limit: 150 };
-      if (productIdFilter.trim()) params.productId = productIdFilter.trim();
-      if (itemCodeFilter.trim()) params.itemCode = itemCodeFilter.trim();
+      if (Array.isArray(dateRange) && dateRange.length === 2 && dateRange[0] && dateRange[1]) {
+        params.startDate = dayjs(dateRange[0]).startOf("day").toISOString();
+        params.endDate = dayjs(dateRange[1]).endOf("day").toISOString();
+      }
       const data = await getProductActivities(params);
       setActivities(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -154,7 +158,7 @@ const ProductActivityPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [productIdFilter, itemCodeFilter, navigate]);
+  }, [navigate, dateRange]);
 
   useEffect(() => {
     if (isRootAdmin) {
@@ -166,8 +170,62 @@ const ProductActivityPage = () => {
   }, [fetchActivityLogs, isRootAdmin, navigate]);
 
   const clearFilters = () => {
-    setProductIdFilter("");
-    setItemCodeFilter("");
+    setDateRange([]);
+  };
+
+  const exportToCsv = () => {
+    if (!activities.length) {
+      message.info("No activity data to export.");
+      return;
+    }
+
+    const headers = [
+      "Date/Time",
+      "Operation",
+      "Admin Username",
+      "Product ID",
+      "Item Code",
+      "Product Name",
+      "Changed Fields",
+      "Snapshot",
+    ];
+
+    const sanitize = (val) => {
+      if (val == null) return "";
+      if (typeof val === "string") return val.replace(/"/g, '""');
+      if (typeof val === "object") return sanitize(JSON.stringify(val));
+      return String(val);
+    };
+
+    const rows = activities.map((record) => {
+      const changedFields = record.changedFields ? JSON.stringify(record.changedFields) : "";
+      const snapshot = record.snapshot ? JSON.stringify(record.snapshot) : "";
+      return [
+        record.timestamp ? new Date(record.timestamp).toLocaleString() : "",
+        record.operation || "",
+        record.adminUsername || record.adminEmail || "Unknown",
+        record.productId || "",
+        record.productItemCode || "",
+        record.productName || "",
+        changedFields,
+        snapshot,
+      ].map((cell) => `"${sanitize(cell)}"`).join(",");
+    });
+
+    const csvContent = [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateSuffix =
+      Array.isArray(dateRange) && dateRange.length === 2 && dateRange[0] && dateRange[1]
+        ? `${dayjs(dateRange[0]).format("YYYYMMDD")}-${dayjs(dateRange[1]).format("YYYYMMDD")}`
+        : "all";
+    link.href = url;
+    link.setAttribute("download", `activity-logs-${dateSuffix}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const columns = [
@@ -231,24 +289,23 @@ const ProductActivityPage = () => {
           style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}
         >
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Button onClick={() => navigate("/admin/products")}>Back to Products</Button>
             <Button type="primary" onClick={fetchActivityLogs} loading={loading} disabled={!isRootAdmin}>
               Refresh
             </Button>
+            <Button onClick={exportToCsv} disabled={!activities.length}>
+              Download Excel
+            </Button>
           </div>
+        </Space>
+        <Space
+          style={{ marginBottom: 20, display: "flex", justifyContent: "space-between", flexWrap: "wrap" }}
+        >
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Input
-              placeholder="Filter by Product ID"
-              value={productIdFilter}
-              onChange={(e) => setProductIdFilter(e.target.value)}
-              style={{ minWidth: 200 }}
-              disabled={!isRootAdmin}
-            />
-            <Input
-              placeholder="Filter by Item Code"
-              value={itemCodeFilter}
-              onChange={(e) => setItemCodeFilter(e.target.value)}
-              style={{ minWidth: 200 }}
+            <RangePicker
+              value={dateRange}
+              onChange={(range) => setDateRange(range || [])}
+              style={{ minWidth: 260 }}
+              allowClear
               disabled={!isRootAdmin}
             />
             <Button onClick={fetchActivityLogs} type="default" disabled={!isRootAdmin}>

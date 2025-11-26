@@ -63,10 +63,21 @@ const NewArrivalPage = () => {
     localStorage.setItem(storageKey, JSON.stringify(list));
   };
 
-  const autoOptions = useMemo(
-    () => (products || []).map((p) => ({ value: p.itemCode || p.productCode || "" })),
-    [products]
-  );
+  const autoOptions = useMemo(() => {
+    const seen = new Set();
+    return (products || []).reduce((acc, p) => {
+      const code = (p.itemCode || p.productCode || "").toString().trim();
+      if (!code) return acc;
+      const normalized = code.toLowerCase();
+      if (seen.has(normalized)) return acc;
+      seen.add(normalized);
+      acc.push({
+        value: code,
+        label: p.name ? `${code} - ${p.name}` : code,
+      });
+      return acc;
+    }, []);
+  }, [products]);
 
   const onItemCodeChange = (val) => {
     const code = (val || "").trim().toLowerCase();
@@ -256,9 +267,10 @@ const NewArrivalPage = () => {
                 onSelect={onItemCodeChange}
                 placeholder="Type item code"
                 disabled={editing != null}
-                filterOption={(inputValue, option) =>
-                  (option?.value || "").toLowerCase().includes((inputValue || "").toLowerCase())
-                }
+                filterOption={(inputValue, option) => {
+                  const haystack = `${option?.value || ""} ${option?.label || ""}`.toLowerCase();
+                  return haystack.includes((inputValue || "").toLowerCase());
+                }}
               />
             </Form.Item>
 

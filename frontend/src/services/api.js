@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Create an Axios instance
 const API = axios.create({
-  baseURL: "http://54.179.149.89:5000/api",
+  baseURL: "http://localhost:5000/api",
 });
 
 // Automatically attach admin token (if exists)
@@ -38,7 +38,10 @@ export const getPackages = async () => {
 
 export const createPackage = async (payload) => {
   try {
-    const res = await API.post("/packages", payload);
+    const isFormData =
+      typeof FormData !== "undefined" && payload instanceof FormData;
+    const config = isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : undefined;
+    const res = await API.post("/packages", payload, config);
     return res.data;
   } catch (error) {
     console.error("Error creating package:", error);
@@ -48,7 +51,10 @@ export const createPackage = async (payload) => {
 
 export const updatePackage = async (id, payload) => {
   try {
-    const res = await API.put(`/packages/${id}`, payload);
+    const isFormData =
+      typeof FormData !== "undefined" && payload instanceof FormData;
+    const config = isFormData ? { headers: { "Content-Type": "multipart/form-data" } } : undefined;
+    const res = await API.put(`/packages/${id}`, payload, config);
     return res.data;
   } catch (error) {
     console.error("Error updating package:", error);

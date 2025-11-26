@@ -13,6 +13,7 @@ import {
   Select,
   Switch,
   Table,
+  Upload,
   Tag,
   message,
 } from "antd";
@@ -40,8 +41,9 @@ import {
   toNumber,
 } from "../../../utils/productUtils";
 
-const createTempId = () =>
-  `pkg-line-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const { Dragger } = Upload;
+let tempCounter = 0;
+const createTempId = () => `pkg-line-${Date.now()}-${tempCounter++}`;
 
 const createEmptyLine = () => ({
   tempId: createTempId(),
@@ -57,6 +59,16 @@ const createEmptyLine = () => ({
   color: "",
   hasVariants: false,
 });
+
+const toUploadFile = (url, prefix = "img") =>
+  url
+    ? {
+        uid: `${prefix}-${url}`,
+        url,
+        status: "done",
+        name: url.split("/").pop() || "image",
+      }
+    : null;
 
 const productHasVariants = (product) =>
   Array.isArray(product?.variants) && product.variants.length > 0;
@@ -75,7 +87,7 @@ const variantLabel = (variant) => {
   const parts = [variant?.brand, variant?.size, variant?.color]
     .filter(Boolean)
     .join(" / ");
-  return parts ? `${variant?.sku} — ${parts}` : variant?.sku || "SKU";
+  return parts ? `${variant?.sku} - ${parts}` : variant?.sku || "SKU";
 };
 
 const deriveOriginalPrice = (product) => {
@@ -162,6 +174,8 @@ const PackageManagerPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [validationError, setValidationError] = useState("");
+  const [primaryImageFileList, setPrimaryImageFileList] = useState([]);
+  const [secondaryImageFileList, setSecondaryImageFileList] = useState([]);
   const [form] = Form.useForm();
 
   const productMap = useMemo(() => {
@@ -183,7 +197,7 @@ const PackageManagerPage = () => {
         acc.push({
           value: code,
           key: code,
-          label: p?.name ? `${code} — ${p.name}` : code,
+          label: p?.name ? `${code} - ${p.name}` : code,
         });
         return acc;
       }, []);
@@ -255,6 +269,8 @@ const PackageManagerPage = () => {
     });
     setEditingId(null);
     setValidationError("");
+    setPrimaryImageFileList([]);
+    setSecondaryImageFileList([]);
   };
 
   const openCreateModal = () => {
@@ -266,6 +282,14 @@ const PackageManagerPage = () => {
     form.setFieldsValue(mapPackageToForm(pkg));
     setEditingId(pkg._id || pkg.id);
     setValidationError("");
+    setPrimaryImageFileList(
+      pkg.primaryImage ? [toUploadFile(pkg.primaryImage, "primary")] : []
+    );
+    setSecondaryImageFileList(
+      Array.isArray(pkg.secondaryImages)
+        ? pkg.secondaryImages.map((img) => toUploadFile(img, "secondary")).filter(Boolean)
+        : []
+    );
     setModalOpen(true);
   };
 
@@ -332,6 +356,11 @@ const PackageManagerPage = () => {
   };
 
   const handleSave = async () => {
+    try {
+      await form.validateFields();
+    } catch (_err) {
+      return;
+    }
     const errors = validateForm();
     if (errors.length) {
       setValidationError(errors[0]);
@@ -339,26 +368,59 @@ const PackageManagerPage = () => {
       return;
     }
     const values = form.getFieldsValue();
-    const payload = {
+    const itemsPayload = (values.lineItems || []).map((line) => ({
+      productId: line.productId,
+      itemCode: line.itemCode,
+      productName: line.productName,
+      shortDescription: line.shortDescription,
+      quantity: Number(line.quantity) || 0,
+      originalPrice: toNumber(line.originalPrice, 0),
+      sku: line.sku,
+      brand: line.brand,
+      size: line.size,
+      color: line.color,
+    }));
+
+    const basePayload = {
       packageCode: values.packageCode.trim(),
       name: values.name.trim(),
       shortDescription: (values.shortDescription || "").trim(),
       packagePrice: Number(values.packagePrice),
       isActive: values.isActive,
       totalOriginal: packageOriginalValue,
-      items: (values.lineItems || []).map((line) => ({
-        productId: line.productId,
-        itemCode: line.itemCode,
-        productName: line.productName,
-        shortDescription: line.shortDescription,
-        quantity: Number(line.quantity) || 0,
-        originalPrice: toNumber(line.originalPrice, 0),
-        sku: line.sku,
-        brand: line.brand,
-        size: line.size,
-        color: line.color,
-      })),
+      items: itemsPayload,
+      primaryImage: primaryImageFileList[0]?.url || "",
+      existingSecondaryImages: secondaryImageFileList
+        .filter((f) => f?.url)
+        .map((f) => f.url),
     };
+
+    const hasNewPrimary = Boolean(primaryImageFileList[0]?.originFileObj);
+    const hasNewSecondary = secondaryImageFileList.some((f) => f?.originFileObj);
+    const shouldSendFormData = hasNewPrimary || hasNewSecondary;
+
+    const payload = shouldSendFormData ? new FormData() : basePayload;
+
+    if (shouldSendFormData) {
+      Object.entries(basePayload).forEach(([key, value]) => {
+        if (value === undefined) return;
+        if (key === "items" || key === "existingSecondaryImages") {
+          payload.append(key, JSON.stringify(value));
+        } else {
+          payload.append(key, value);
+        }
+      });
+
+      if (hasNewPrimary && primaryImageFileList[0]?.originFileObj) {
+        payload.append("primaryImage", primaryImageFileList[0].originFileObj);
+      }
+
+      (secondaryImageFileList || []).forEach((file) => {
+        if (file.originFileObj) {
+          payload.append("secondaryImages", file.originFileObj);
+        }
+      });
+    }
 
     try {
       setSaving(true);
@@ -468,7 +530,7 @@ const PackageManagerPage = () => {
       subtitle="Bundle products into curated packages with manual pricing."
       actions={actionsBar}
     >
-      <Card>
+      <Card variant="borderless">
         <p style={{ marginBottom: 16, color: "#64748b" }}>
           Define curated packages, attach products by item code or SKU, and keep track of the
           original value versus your chosen package price.
@@ -488,7 +550,7 @@ const PackageManagerPage = () => {
         onCancel={closeModal}
         footer={null}
         width={1000}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           layout="vertical"
@@ -510,7 +572,7 @@ const PackageManagerPage = () => {
             >
               <Input placeholder="Package display name" />
             </Form.Item>
-            <Form.Item name="isActive" label="Status" valuePropName="checked" initialValue>
+            <Form.Item name="isActive" label="Status" valuePropName="checked">
               <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
             </Form.Item>
           </div>
@@ -520,6 +582,42 @@ const PackageManagerPage = () => {
               placeholder="Optional short blurb shown to admins and customers."
             />
           </Form.Item>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+            <Form.Item label="Primary Image">
+              <Dragger
+                accept="image/*"
+                multiple={false}
+                beforeUpload={() => false}
+                fileList={primaryImageFileList}
+                maxCount={1}
+                onChange={({ fileList }) => setPrimaryImageFileList(fileList.slice(-1))}
+              >
+                <p className="ant-upload-drag-icon">
+                  <PlusOutlined />
+                </p>
+                <p className="ant-upload-text">Add primary image</p>
+                <p className="ant-upload-hint">Shown on package cards and listings</p>
+              </Dragger>
+            </Form.Item>
+
+            <Form.Item label="Secondary Images">
+              <Dragger
+                accept="image/*"
+                multiple
+                beforeUpload={() => false}
+                fileList={secondaryImageFileList}
+                listType="picture-card"
+                onChange={({ fileList }) => setSecondaryImageFileList(fileList)}
+              >
+                <p className="ant-upload-drag-icon">
+                  <PlusOutlined />
+                </p>
+                <p className="ant-upload-text">Add supporting images</p>
+                <p className="ant-upload-hint">Shown in quick view and details</p>
+              </Dragger>
+            </Form.Item>
+          </div>
 
           <Divider />
 
@@ -536,13 +634,14 @@ const PackageManagerPage = () => {
           <Form.List name="lineItems">
             {(fields, { remove }) => (
               <Space direction="vertical" style={{ width: "100%" }} size="large">
-                {fields.map((field, idx) => {
+                {fields.map(({ key, name, ...restField }, idx) => {
                   const line = safeLineItems[idx] || {};
                   const product = findProduct(line.itemCode);
                   const lineTotal = computePackageLineTotal(line);
                   return (
                     <Card
-                      key={line?.tempId || field.key}
+                      key={key}
+                      variant="borderless"
                       type="inner"
                       title={`Package Item ${idx + 1}`}
                       extra={
@@ -561,8 +660,8 @@ const PackageManagerPage = () => {
                     >
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                         <Form.Item
-                          {...field}
-                          name={[field.name, "itemCode"]}
+                          {...restField}
+                          name={[name, "itemCode"]}
                           label="Item Code"
                           rules={[{ required: true, message: "Item code is required" }]}
                         >
@@ -578,8 +677,8 @@ const PackageManagerPage = () => {
                           />
                         </Form.Item>
                         <Form.Item
-                          {...field}
-                          name={[field.name, "productName"]}
+                          {...restField}
+                          name={[name, "productName"]}
                           label="Product Name"
                         >
                           <Input
@@ -590,8 +689,8 @@ const PackageManagerPage = () => {
                           />
                         </Form.Item>
                         <Form.Item
-                          {...field}
-                          name={[field.name, "shortDescription"]}
+                          {...restField}
+                          name={[name, "shortDescription"]}
                           label="Short Description"
                         >
                           <Input
@@ -603,7 +702,7 @@ const PackageManagerPage = () => {
                         </Form.Item>
                         {line?.hasVariants ? (
                           <>
-                        <Form.Item {...field} name={[field.name, "sku"]} label="SKU">
+                        <Form.Item {...restField} name={[name, "sku"]} label="SKU">
                           {product && Array.isArray(product.variants) ? (
                             <Select
                               showSearch
@@ -613,7 +712,7 @@ const PackageManagerPage = () => {
                                 .map((variant, variantIdx) => ({
                                   label: variantLabel(variant),
                                   value: variant?.sku,
-                                  key: variant?.sku || variantIdx,
+                                  key: variant?.sku || `variant-${variantIdx}`,
                                 }))}
                               optionFilterProp="label"
                               onChange={(val) => handleSkuChange(idx, val)}
@@ -626,13 +725,13 @@ const PackageManagerPage = () => {
                             />
                           )}
                         </Form.Item>
-                            <Form.Item {...field} name={[field.name, "brand"]} label="Brand">
+                            <Form.Item {...restField} name={[name, "brand"]} label="Brand">
                               <Input />
                             </Form.Item>
-                            <Form.Item {...field} name={[field.name, "size"]} label="Size">
+                            <Form.Item {...restField} name={[name, "size"]} label="Size">
                               <Input />
                             </Form.Item>
-                            <Form.Item {...field} name={[field.name, "color"]} label="Color">
+                            <Form.Item {...restField} name={[name, "color"]} label="Color">
                               <Input />
                             </Form.Item>
                           </>
@@ -644,8 +743,8 @@ const PackageManagerPage = () => {
                           </div>
                         )}
                         <Form.Item
-                          {...field}
-                          name={[field.name, "quantity"]}
+                          {...restField}
+                          name={[name, "quantity"]}
                           label="Quantity"
                           rules={[{ required: true, message: "Quantity is required" }]}
                         >
@@ -658,8 +757,8 @@ const PackageManagerPage = () => {
                           />
                         </Form.Item>
                         <Form.Item
-                          {...field}
-                          name={[field.name, "originalPrice"]}
+                          {...restField}
+                          name={[name, "originalPrice"]}
                           label="Original Price"
                           rules={[{ required: true, message: "Original price is required" }]}
                         >
@@ -704,7 +803,7 @@ const PackageManagerPage = () => {
 
           <Card
             size="small"
-            bordered
+            variant="borderless"
             style={{ background: "#f8fafc", borderColor: "#cbd5e1", marginBottom: 16 }}
           >
             <div

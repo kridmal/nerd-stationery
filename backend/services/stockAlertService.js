@@ -1,9 +1,8 @@
 import nodemailer from "nodemailer";
 import Product from "../models/Product.js";
 import AlertSetting from "../models/AlertSetting.js";
-import { getAllowedHours } from "../controllers/alertController.js";
 
-const HOURS = getAllowedHours();
+const HOURS = Array.from({ length: 24 }).map((_, idx) => idx.toString().padStart(2, "0"));
 let transport = null;
 let schedulerHandle = null;
 let inFlight = false;

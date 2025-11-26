@@ -49,6 +49,11 @@ export const createProductSlug = (name) => {
     .replace(/^-+|-+$/g, "") || "product";
 };
 
+export const createPackageSlug = (name) => {
+  if (!name) return "package";
+  return createProductSlug(name);
+};
+
 export const buildProductCardData = (item) => {
   const fallbackDescription =
     typeof item.description === "string" ? item.description : "";
@@ -181,6 +186,16 @@ export const buildPackageSummary = (pkg) => {
       : computePackageOriginalValue(lineItems);
 
   const name = pkg?.name || "Curated Package";
+  const primaryImage = getPrimaryImage({
+    images: Array.isArray(pkg?.images) ? pkg.images : [pkg?.primaryImage].filter(Boolean),
+    variants: [],
+    imageUrl: pkg?.primaryImage,
+    image: pkg?.primaryImage,
+  });
+  const secondaryImages = normalizeImagesList(pkg?.secondaryImages);
+  const slug = createPackageSlug(
+    pkg?.slug || pkg?.name || pkg?.packageCode || pkg?.code || pkg?.id
+  );
 
   return {
     id: pkg?._id || pkg?.id || name,
@@ -193,5 +208,9 @@ export const buildPackageSummary = (pkg) => {
     description: preview.length
       ? `Includes: ${preview.join(", ")}${extra > 0 ? ` +${extra} more` : ""}`
       : "Includes a curated mix of our best-selling stationery picks.",
+    primaryImage,
+    secondaryImages,
+    shortDescription: pkg?.shortDescription || "",
+    slug,
   };
 };

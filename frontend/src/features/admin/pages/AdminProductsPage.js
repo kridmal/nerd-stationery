@@ -183,15 +183,6 @@ const AdminProductsPage = () => {
   const discountTypeWatch = normalizeDiscountType(Form.useWatch("discountType", form) || "none");
   const navigate = useNavigate();
 
-  const itemCodeOptions = useMemo(
-    () =>
-      (products || [])
-        .map((p) => p?.itemCode ?? p?.productCode ?? "")
-        .filter(Boolean)
-        .map((code) => ({ value: code })),
-    [products]
-  );
-
   const fetchProducts = async () => {
     try {
       const data = await getProducts();
@@ -578,14 +569,7 @@ const AdminProductsPage = () => {
             label="Item Code"
             rules={[{ required: true, message: "Please enter item code" }]}
           >
-            <AutoComplete
-              options={itemCodeOptions}
-              placeholder="Enter item code"
-              disabled={!!editingProduct}
-              filterOption={(inputValue, option) =>
-                (option?.value || "").toUpperCase().includes((inputValue || "").toUpperCase())
-              }
-            />
+            <Input placeholder="Enter item code" disabled={!!editingProduct} />
           </Form.Item>
 
           <Form.Item

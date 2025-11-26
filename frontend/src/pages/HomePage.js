@@ -11,12 +11,13 @@ import "react-responsive-carousel/lib/styles/carousel.min.css";
 import {
   buildPackageSummary,
   buildProductCardData,
-  formatCurrency,
   PLACEHOLDER_IMAGE,
   toNumber,
   createProductSlug,
+  createPackageSlug,
 } from "../utils/productUtils";
 import { addToCart } from "../utils/cartUtils";
+import PackageCard from "../components/PackageCard/PackageCard";
 
 const NEW_ARRIVALS_STORAGE_KEY = "newArrivals";
 const VISIBLE_SLIDE_COUNT = 4;
@@ -206,7 +207,15 @@ function HomePage() {
       : `Special Discounts (${discountedCards.length})`;
 
   const preparedPackages = useMemo(
-    () => (packages || []).map((pkg) => buildPackageSummary(pkg)),
+    () => {
+      const sorted = [...(packages || [])].sort((a, b) => {
+        const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : null;
+        const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : null;
+        if (aTime == null || bTime == null) return 0;
+        return aTime - bTime; // keep newly added packages under previous ones
+      });
+      return sorted.map((pkg) => buildPackageSummary(pkg));
+    },
     [packages]
   );
 
@@ -459,18 +468,28 @@ function HomePage() {
             </IconButton>
             <div className="product-slider__items product-slider__items--packages">
               {visiblePackages.map((pkg) => (
-                <article className="package-card" key={pkg.id}>
-                  <div className="package-card__header">
-                    <h3>{pkg.name}</h3>
-                    <span className="package-card__price">
-                      {formatCurrency(pkg.price)}
-                    </span>
-                  </div>
-                  <p className="package-card__items">{pkg.description}</p>
-                  <div className="package-card__meta">
-                    {pkg.items.length > 0 ? `${pkg.items.length} items included` : "Flexible mix"}
-                  </div>
-                </article>
+                <PackageCard
+                  key={pkg.id}
+                  pkg={pkg}
+                  onNavigate={(packageData) => {
+                    const slug =
+                      packageData.slug ||
+                      createPackageSlug(packageData.name || packageData.code || packageData.id);
+                    navigate(`/packages/${slug}`);
+                  }}
+                  onAddToCart={(packageData) => {
+                    const payload = {
+                      ...packageData,
+                      slug: packageData.slug,
+                      name: packageData.name,
+                      image: packageData.primaryImage || packageData.images?.[0],
+                      finalPrice: packageData.price,
+                      originalPrice: packageData.totalOriginal || packageData.price,
+                    };
+                    addToCart(payload, 1);
+                    navigate("/cart");
+                  }}
+                />
               ))}
             </div>
             <IconButton

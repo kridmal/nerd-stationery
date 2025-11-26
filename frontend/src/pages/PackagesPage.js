@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { CircularProgress } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { buildPackageSummary, formatCurrency } from "../utils/productUtils";
+import { buildPackageSummary, createPackageSlug } from "../utils/productUtils";
+import { addToCart } from "../utils/cartUtils";
+import PackageCard from "../components/PackageCard/PackageCard";
 import "./ShowcasePages.css";
 
 function PackagesPage() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -26,10 +30,15 @@ function PackagesPage() {
     fetchPackages();
   }, []);
 
-  const preparedPackages = useMemo(
-    () => packages.map((pkg) => buildPackageSummary(pkg)),
-    [packages]
-  );
+  const preparedPackages = useMemo(() => {
+    const sorted = [...packages].sort((a, b) => {
+      const aTime = a?.createdAt ? new Date(a.createdAt).getTime() : null;
+      const bTime = b?.createdAt ? new Date(b.createdAt).getTime() : null;
+      if (aTime == null || bTime == null) return 0;
+      return aTime - bTime; // older first, new packages appear under previous ones
+    });
+    return sorted.map((pkg) => buildPackageSummary(pkg));
+  }, [packages]);
 
   const visiblePackages = useMemo(
     () => preparedPackages.filter((pkg) => pkg.isActive !== false),
@@ -54,18 +63,28 @@ function PackagesPage() {
       ) : (
         <div className="showcase-packages">
           {visiblePackages.map((pkg) => (
-            <article className="package-card--wide" key={pkg.id}>
-              <h3>{pkg.name}</h3>
-              <p>{pkg.description}</p>
-              <div className="package-card__meta">
-                <span className="package-card__price">{formatCurrency(pkg.price)}</span>
-                {pkg.totalOriginal ? (
-                  <span className="package-card__value">
-                    Value {formatCurrency(pkg.totalOriginal)}
-                  </span>
-                ) : null}
-              </div>
-            </article>
+            <PackageCard
+              key={pkg.id}
+              pkg={pkg}
+              onNavigate={(packageData) => {
+                const slug =
+                  packageData.slug ||
+                  createPackageSlug(packageData.name || packageData.code || packageData.id);
+                navigate(`/packages/${slug}`);
+              }}
+              onAddToCart={(packageData) => {
+                const payload = {
+                  ...packageData,
+                  slug: packageData.slug,
+                  name: packageData.name,
+                  image: packageData.primaryImage || packageData.images?.[0],
+                  finalPrice: packageData.price,
+                  originalPrice: packageData.totalOriginal || packageData.price,
+                };
+                addToCart(payload, 1);
+                navigate("/cart");
+              }}
+            />
           ))}
         </div>
       )}

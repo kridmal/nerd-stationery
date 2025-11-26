@@ -12,6 +12,7 @@ import NewArrivalsPage from "./pages/NewArrivalsPage";
 import DiscountsPage from "./pages/DiscountsPage";
 import PackagesPage from "./pages/PackagesPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
+import PackageDetailPage from "./pages/PackageDetailPage";
 import CartPage from "./pages/CartPage";
 import CheckoutOverviewPage from "./pages/CheckoutOverviewPage";
 import CheckoutDeliveryPage from "./pages/CheckoutDeliveryPage";
@@ -71,6 +72,7 @@ function App() {
             <Route path="/new-arrivals" element={<NewArrivalsPage />} />
             <Route path="/discounts" element={<DiscountsPage />} />
             <Route path="/packages" element={<PackagesPage />} />
+            <Route path="/packages/:slug" element={<PackageDetailPage />} />
 
             {/* Admin Routes */}
             <Route path="/admin-login" element={<AdminLoginPage />} />

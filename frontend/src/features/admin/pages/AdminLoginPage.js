@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -24,6 +23,7 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import API from "../../../services/api";
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(12px); }
@@ -92,15 +92,10 @@ const AdminLoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(
-        "http://54.179.149.89:5000/api/auth/login",
-        {
-          email,
-          password,
-        },
-        {
-          headers: { "x-admin-portal": "true" },
-        }
+      const response = await API.post(
+        "/auth/login",
+        { email, password },
+        { headers: { "x-admin-portal": "true" } }
       );
 
       const normalizedRole = normalizeAdminRole(response.data.user?.role);

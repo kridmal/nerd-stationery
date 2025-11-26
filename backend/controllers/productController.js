@@ -398,12 +398,30 @@ export const deleteProduct = async (req, res) => {
 
 export const getProductActivities = async (req, res) => {
   try {
-    const { productId, itemCode, limit } = req.query;
+    const { productId, itemCode, limit, startDate, endDate } = req.query;
     const parsedLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
     const filter = {};
 
     if (productId) filter.productId = productId;
     if (itemCode) filter.productItemCode = itemCode;
+
+    // Date range filtering
+    const dateFilter = {};
+    if (startDate) {
+      const start = new Date(startDate);
+      if (!Number.isNaN(start.getTime())) {
+        dateFilter.$gte = start;
+      }
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      if (!Number.isNaN(end.getTime())) {
+        dateFilter.$lte = end;
+      }
+    }
+    if (Object.keys(dateFilter).length > 0) {
+      filter.timestamp = dateFilter;
+    }
 
     const activities = await Activity.find(filter)
       .sort({ timestamp: -1 })

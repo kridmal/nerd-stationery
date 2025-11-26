@@ -21,6 +21,8 @@ const packageSchema = new mongoose.Schema(
     packageCode: { type: String, trim: true, unique: true, sparse: true },
     name: { type: String, required: true, trim: true },
     shortDescription: { type: String, trim: true, default: "" },
+    primaryImage: { type: String, trim: true, default: "" },
+    secondaryImages: { type: [String], default: [] },
     items: { type: [PackageItemSchema], default: [] },
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }], // legacy field
     packagePrice: { type: Number, required: true, min: 0 },
@@ -43,6 +45,12 @@ packageSchema.pre("save", function computeTotals(next) {
         )
       : pkg.totalOriginal || 0;
   pkg.totalOriginal = computedTotal;
+  pkg.secondaryImages = Array.isArray(pkg.secondaryImages)
+    ? pkg.secondaryImages.filter(Boolean)
+    : [];
+  if (!pkg.primaryImage && pkg.secondaryImages.length) {
+    [pkg.primaryImage] = pkg.secondaryImages;
+  }
   if (pkg.packagePrice == null && pkg.price != null) {
     pkg.packagePrice = pkg.price;
   }
